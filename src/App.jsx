@@ -1,26 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Target, Calculator, Book, TrendingUp, Save, ChevronDown, ChevronUp, Camera, Upload, BarChart } from 'lucide-react';
 import { LineChart, Line, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-const BM_SUBJECTS = {
-  TAL: {
-    grundlagen: ['Deutsch', 'Englisch', 'Französisch', 'Mathematik Grundlagen'],
-    schwerpunkt: ['Mathematik Schwerpunkt', 'Naturwissenschaften'],
-    erganzung: ['Geschichte und Politik', 'Wirtschaft und Recht'],
-    interdisziplinar: ['Interdisziplinäres Arbeiten']
-  },
-  DL: {
-    grundlagen: ['Deutsch', 'Englisch', 'Französisch', 'Mathematik'],
-    schwerpunkt: ['Finanz- und Rechnungswesen', 'Wirtschaft und Recht'],
-    erganzung: ['Geschichte und Politik', 'Wirtschaft und Recht'],
-    interdisziplinar: ['Interdisziplinäres Arbeiten']
-  }
-};
-
-const EXAM_SUBJECTS = {
-  TAL: ['Deutsch', 'Englisch', 'Französisch', 'Mathematik Grundlagen', 'Mathematik Schwerpunkt', 'Naturwissenschaften'],
-  DL: ['Deutsch', 'Englisch', 'Französisch', 'Mathematik', 'Finanz- und Rechnungswesen', 'Wirtschaft und Recht']
-};
+import { storage } from './utils/storage';
+import { BM_SUBJECTS, EXAM_SUBJECTS, LEKTIONENTAFEL } from './constants';
+import './styles/App.css';
 
 export default function BMGradeCalculator() {
   const [bmType, setBmType] = useState('TAL');
@@ -31,10 +14,13 @@ export default function BMGradeCalculator() {
   const [expandedSubjects, setExpandedSubjects] = useState({});
   const [goalGrade, setGoalGrade] = useState(5.0);
   const [semesterSimulator, setSemesterSimulator] = useState({});
+  const [semesterPlans, setSemesterPlans] = useState({});
   const [semesterGoal, setSemesterGoal] = useState(5.0);
+  const [subjectGoals, setSubjectGoals] = useState({});
   const [activeTab, setActiveTab] = useState('current');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [lastScanType, setLastScanType] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -44,29 +30,32 @@ export default function BMGradeCalculator() {
     saveData();
   }, [subjects, semesterGrades, bmType, currentSemester]);
 
-  const loadData = async () => {
+  const loadData = () => {
     try {
-      const result = await window.storage.get('bm-calculator-data');
-      if (result) {
-        const data = JSON.parse(result.value);
+      const data = storage.get('bm-calculator-data');
+      if (data) {
         setSubjects(data.subjects || {});
         setSemesterGrades(data.semesterGrades || {});
         setBmType(data.bmType || 'TAL');
         setCurrentSemester(data.currentSemester || 1);
+        setSemesterPlans(data.semesterPlans || {});
+        setSubjectGoals(data.subjectGoals || {});
       }
     } catch (error) {
       console.log('Aucune donnée sauvegardée trouvée');
     }
   };
 
-  const saveData = async () => {
+  const saveData = () => {
     try {
-      await window.storage.set('bm-calculator-data', JSON.stringify({
+      storage.set('bm-calculator-data', {
         subjects,
         semesterGrades,
         bmType,
-        currentSemester
-      }));
+        currentSemester,
+        semesterPlans,
+        subjectGoals
+      });
     } catch (error) {
       console.error('Erreur de sauvegarde:', error);
     }
@@ -84,49 +73,11 @@ export default function BMGradeCalculator() {
         reader.readAsDataURL(file);
       });
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'image',
-                  source: {
-                    type: 'base64',
-                    media_type: file.type,
-                    data: base64Data
-                  }
-                },
-                {
-                  type: 'text',
-                  text: `Analyse ce bulletin scolaire suisse de Berufsmaturität. Extrait UNIQUEMENT les matières et leurs notes. Réponds UNIQUEMENT avec un JSON valide, sans préambule, sans markdown, dans ce format exact:
-{
-  "semester": numéro_du_semestre,
-  "grades": {
-    "Nom_Matière": note_numérique,
-    "Autre_Matière": note_numérique
-  }
-}
-
-Matières possibles: Deutsch, Englisch, Französisch, Mathematik Grundlagen, Mathematik Schwerpunkt, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten.
-
-IMPORTANT: Pour "Mathematik" dans le bulletin:
-- Si c'est le semestre 1-4: utilise "Mathematik Grundlagen"
-- Si c'est le semestre 5-8: utilise "Mathematik Schwerpunkt"
-
-Si tu ne trouves pas d'information, retourne {"error": "description"}.`
-                }
-              ]
-            }
-          ]
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Data, mediaType: file.type })
       });
 
       const data = await response.json();
@@ -138,20 +89,45 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
       if (result.error) {
         setAnalysisResult({ error: result.error });
       } else {
-        setAnalysisResult(result);
-        
-        if (result.semester && result.grades) {
+        // Subject normalization based on Lektionentafel for selected track
+        const lekSubjects = new Set(Object.keys(LEKTIONENTAFEL[bmType] || {}));
+        const normalize = (name) => {
+          if (!name) return null;
+          const raw = String(name).trim();
+          if (/^\s*\d/.test(raw)) return null; // ignore codes like 129-INP
+          const n = raw.toLowerCase();
+          let canon = null;
+          if (n.startsWith('idaf') || n === 'idaf' || n.includes('interdisziplin')) canon = 'Interdisziplinäres Arbeiten';
+          else if (n === 'frw' || n.includes('finanz')) canon = 'Finanz- und Rechnungswesen';
+          else if (n === 'wr' || n.includes('wirtschaft und recht')) canon = 'Wirtschaft und Recht';
+          else if (n.startsWith('geschichte')) canon = 'Geschichte und Politik';
+          else if (n.startsWith('mathematik')) canon = 'Mathematik';
+          else if (n.startsWith('deutsch')) canon = 'Deutsch';
+          else if (n.startsWith('englisch')) canon = 'Englisch';
+          else if (n.startsWith('franz')) canon = 'Französisch';
+          else if (n.includes('natur')) canon = 'Naturwissenschaften';
+          if (canon) return lekSubjects.has(canon) ? canon : null;
+          // Try exact canonical match
+          const candidate = raw.replace(/\s+/g, ' ');
+          return lekSubjects.has(candidate) ? candidate : null;
+        };
+
+        const mappedGrades = {};
+        const grades = result.grades || {};
+        Object.entries(grades).forEach(([k, v]) => {
+          const canon = normalize(k);
+          if (!canon) return;
+          mappedGrades[canon] = parseFloat(v);
+        });
+
+        setAnalysisResult({ semester: result.semester ?? currentSemester, grades: mappedGrades });
+
+        if (Object.keys(mappedGrades).length > 0) {
+          const sem = result.semester ?? currentSemester;
           const newSemesterGrades = { ...semesterGrades };
-          Object.entries(result.grades).forEach(([subject, grade]) => {
-            let finalSubject = subject;
-            if (subject === 'Mathematik') {
-              finalSubject = result.semester <= 4 ? 'Mathematik Grundlagen' : 'Mathematik Schwerpunkt';
-            }
-            
-            if (!newSemesterGrades[finalSubject]) {
-              newSemesterGrades[finalSubject] = {};
-            }
-            newSemesterGrades[finalSubject][result.semester] = grade;
+          Object.entries(mappedGrades).forEach(([subject, grade]) => {
+            if (!newSemesterGrades[subject]) newSemesterGrades[subject] = {};
+            newSemesterGrades[subject][sem] = grade;
           });
           setSemesterGrades(newSemesterGrades);
         }
@@ -166,8 +142,25 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
-    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
+    if (!file) return;
+
+    // En mode "Semestre Actuel", n'autoriser que les images (screenshots SAL)
+    if (activeTab === 'current') {
+      if (!file.type.startsWith('image/')) {
+        setAnalysisResult({ error: 'Seuls les screenshots (JPG, PNG) sont acceptés pour le semestre actuel.' });
+        return;
+      }
+      setLastScanType('SAL');
       analyzeBulletin(file);
+      return;
+    }
+
+    // En mode "Bulletins Précédents", autoriser image ou PDF
+    if (activeTab === 'previous') {
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+        setLastScanType('Bulletin');
+        analyzeBulletin(file);
+      }
     }
   };
 
@@ -249,17 +242,55 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
     return Math.round(required * 10) / 10;
   };
 
-  const simulateSemesterAverage = (subject, additionalGrade, additionalWeight) => {
+  const simulateSemesterAverage = (subject) => {
     const currentGrades = subjects[subject] || [];
-    if (!additionalGrade || !additionalWeight) return calculateSemesterAverage(subject);
-    
-    const allGrades = [...currentGrades, { 
-      grade: parseFloat(additionalGrade), 
-      weight: parseFloat(additionalWeight) 
-    }];
-    
+    const planned = (semesterPlans[subject] || []).map(p => ({ grade: parseFloat(p.grade), weight: parseFloat(p.weight) }));
+    const allGrades = [...currentGrades, ...planned];
+    if (allGrades.length === 0) return null;
     const avg = calculateWeightedAverage(allGrades);
     return avg ? roundToHalfOrWhole(avg) : null;
+  };
+
+  const addPlannedControl = (subject, grade, weight) => {
+    const plan = { id: Date.now(), grade: parseFloat(grade), weight: parseFloat(weight) };
+    setSemesterPlans(prev => ({
+      ...prev,
+      [subject]: [...(prev[subject] || []), plan]
+    }));
+  };
+
+  const removePlannedControl = (subject, id) => {
+    setSemesterPlans(prev => ({
+      ...prev,
+      [subject]: (prev[subject] || []).filter(p => p.id !== id)
+    }));
+  };
+
+  const calculateRequiredSemesterGradeWithPlans = (subject, targetSemesterAvg, assumedWeight = 1) => {
+    const baseGrades = subjects[subject] || [];
+    const planned = (semesterPlans[subject] || []).map(p => ({ grade: parseFloat(p.grade), weight: parseFloat(p.weight) }));
+    const all = [...baseGrades, ...planned];
+    if (all.length === 0) return null;
+    const currentTotalWeight = all.reduce((sum, g) => sum + g.weight, 0);
+    const currentSum = all.reduce((sum, g) => sum + (g.grade * g.weight), 0);
+    const required = (targetSemesterAvg * (currentTotalWeight + assumedWeight) - currentSum) / assumedWeight;
+    return Math.round(required * 10) / 10;
+  };
+
+  const getSubjectsForSemester = (semester) => {
+    const allSubjects = [...BM_SUBJECTS[bmType].grundlagen, ...BM_SUBJECTS[bmType].schwerpunkt, ...BM_SUBJECTS[bmType].erganzung, ...BM_SUBJECTS[bmType].interdisziplinar];
+    return allSubjects.filter(subject => {
+      const semesters = LEKTIONENTAFEL[bmType][subject];
+      return semesters && semesters.includes(semester);
+    });
+  };
+
+  const calculateOverallSimulatedSemesterAverage = () => {
+    const subjectsInSemester = getSubjectsForSemester(currentSemester);
+    const avgs = subjectsInSemester.map(subject => simulateSemesterAverage(subject)).filter(a => a !== null);
+    if (avgs.length === 0) return null;
+    const total = avgs.reduce((sum, a) => sum + a, 0);
+    return roundToHalfOrWhole(total / avgs.length);
   };
 
   const calculateRequiredExamGrade = (subject, targetMaturnote) => {
@@ -290,6 +321,23 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
     if (maturnotes.length === 0) return null;
     const avg = maturnotes.reduce((sum, n) => sum + n, 0) / maturnotes.length;
     return Math.round(avg * 10) / 10;
+  };
+
+  // Simulated helpers: per-subject views
+  const getSimulatedSemesterAverage = (subject) => {
+    const sim = semesterSimulator[subject];
+    if (sim?.grade && sim?.weight) {
+      return simulateSemesterAverage(subject, sim.grade, sim.weight);
+    }
+    return calculateSemesterAverage(subject);
+  };
+
+  const getSimulatedMaturnote = (subject) => {
+    const simExam = examSimulator[subject];
+    if (simExam) {
+      return calculateMaturnote(subject, simExam);
+    }
+    return null;
   };
 
   const checkPassingConditions = () => {
@@ -408,55 +456,66 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
           </div>
         </header>
 
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-indigo-900 mb-4 flex items-center gap-2">
-            <Camera className="w-6 h-6" />
-            Scanner un Bulletin
-          </h2>
-          
-          <div className="flex flex-col items-center gap-4">
-            <label className="w-full cursor-pointer">
-              <div className="border-2 border-dashed border-indigo-300 rounded-xl p-8 text-center hover:border-indigo-500 hover:bg-indigo-50 transition">
-                <Upload className="w-12 h-12 mx-auto mb-3 text-indigo-600" />
-                <p className="text-gray-700 font-medium mb-1">Cliquez pour télécharger un bulletin</p>
-                <p className="text-sm text-gray-500">Image (JPG, PNG) ou PDF</p>
-              </div>
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </label>
+        {(activeTab === 'current' || activeTab === 'previous') && (
+          <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <h2 className="text-xl font-bold text-indigo-900 mb-4 flex items-center gap-2">
+              <Camera className="w-6 h-6" />
+              {activeTab === 'current' ? 'Scanner SAL' : 'Scanner un Bulletin'}
+            </h2>
+            
+            <div className="flex flex-col items-center gap-4">
+              <label className="w-full cursor-pointer">
+                <div className="border-2 border-dashed border-indigo-300 rounded-xl p-8 text-center hover:border-indigo-500 hover:bg-indigo-50 transition">
+                  <Upload className="w-12 h-12 mx-auto mb-3 text-indigo-600" />
+                  {activeTab === 'current' ? (
+                    <>
+                      <p className="text-gray-700 font-medium mb-1">Cliquez pour télécharger un screenshot SAL</p>
+                      <p className="text-sm text-gray-500">Image uniquement (JPG, PNG)</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-gray-700 font-medium mb-1">Cliquez pour télécharger un bulletin</p>
+                      <p className="text-sm text-gray-500">Image (JPG, PNG) ou PDF</p>
+                    </>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept={activeTab === 'current' ? 'image/*' : 'image/*,application/pdf'}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
 
-            {isAnalyzing && (
-              <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                <p className="mt-2 text-gray-600">Analyse en cours...</p>
-              </div>
-            )}
+              {isAnalyzing && (
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                  <p className="mt-2 text-gray-600">Analyse en cours...</p>
+                </div>
+              )}
 
-            {analysisResult && !isAnalyzing && (
-              <div className={`w-full p-4 rounded-lg ${analysisResult.error ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
-                {analysisResult.error ? (
-                  <p className="text-red-800">❌ {analysisResult.error}</p>
-                ) : (
-                  <div>
-                    <p className="text-green-800 font-bold mb-2">✓ Bulletin analysé - Semestre {analysisResult.semester}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                      {Object.entries(analysisResult.grades).map(([subject, grade]) => (
-                        <div key={subject} className="bg-white p-2 rounded">
-                          <span className="text-gray-700">{subject}:</span>
-                          <span className="font-bold ml-1">{grade}</span>
-                        </div>
-                      ))}
+              {analysisResult && !isAnalyzing && (
+                <div className={`w-full p-4 rounded-lg ${analysisResult.error ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                  {analysisResult.error ? (
+                    <p className="text-red-800">❌ {analysisResult.error}</p>
+                  ) : (
+                    <div>
+                      <p className="text-green-800 font-bold mb-2">✓ {(lastScanType || 'Bulletin')} analysé - Semestre {analysisResult.semester}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                        {Object.entries(analysisResult.grades).map(([subject, grade]) => (
+                          <div key={subject} className="bg-white p-2 rounded">
+                            <span className="text-gray-700">{subject}:</span>
+                            <span className="font-bold ml-1">{grade}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex gap-2 mb-6 overflow-x-auto">
           <button
@@ -503,40 +562,53 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
                 </h2>
                 
                 <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Moyenne semestrielle objectif
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="1"
-                    max="6"
-                    value={semesterGoal}
-                    onChange={(e) => setSemesterGoal(parseFloat(e.target.value))}
-                    className="w-full p-3 border-2 border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-lg font-bold"
-                  />
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-white rounded-xl p-4 border-2 border-indigo-200">
+                      <div className="text-sm text-gray-600 mb-1">Semestre actuel</div>
+                      <div className="text-3xl font-bold text-indigo-900">S{currentSemester}</div>
+                    </div>
+                    <div className="bg-white rounded-xl p-4 border-2 border-indigo-200">
+                      <div className="text-sm text-gray-600 mb-1">Moyenne générale semestrielle simulée</div>
+                      <div className="text-3xl font-bold text-indigo-900">
+                        {calculateOverallSimulatedSemesterAverage()?.toFixed(1) || '-'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Objectif par défaut
+                    </label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="1"
+                      max="6"
+                      value={semesterGoal}
+                      onChange={(e) => setSemesterGoal(parseFloat(e.target.value))}
+                      className="w-full p-3 border-2 border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-lg font-bold"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
-                  {allSubjects.map(subject => (
-                    <SemesterSimulatorCard
-                      key={subject}
-                      subject={subject}
-                      currentGrades={subjects[subject] || []}
-                      currentAverage={calculateSemesterAverage(subject)}
-                      requiredGrade={calculateRequiredSemesterGrade(subject, semesterGoal)}
-                      simulatedGrade={semesterSimulator[subject]}
-                      onSimulatedGradeChange={(grade, weight) => 
-                        setSemesterSimulator({...semesterSimulator, [subject]: {grade, weight}})
-                      }
-                      simulatedAverage={simulateSemesterAverage(
-                        subject, 
-                        semesterSimulator[subject]?.grade,
-                        semesterSimulator[subject]?.weight
-                      )}
-                      goalGrade={semesterGoal}
-                    />
-                  ))}
+                  {getSubjectsForSemester(currentSemester).map(subject => {
+                    const subjectGoal = subjectGoals[subject] ?? semesterGoal;
+                    return (
+                      <SemesterSimulatorCard
+                        key={subject}
+                        subject={subject}
+                        currentGrades={subjects[subject] || []}
+                        plannedControls={semesterPlans[subject] || []}
+                        onAddPlan={(grade, weight) => addPlannedControl(subject, grade, weight)}
+                        onRemovePlan={(id) => removePlannedControl(subject, id)}
+                        currentAverage={calculateSemesterAverage(subject)}
+                        simulatedAverage={simulateSemesterAverage(subject)}
+                        goalGrade={subjectGoal}
+                        onGoalChange={(goal) => setSubjectGoals(prev => ({ ...prev, [subject]: goal }))}
+                        computeRequired={(assumedWeight) => calculateRequiredSemesterGradeWithPlans(subject, subjectGoal, assumedWeight)}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -550,8 +622,8 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
                   Notes du Semestre {currentSemester}
                 </h2>
                 
-                <div className="grid md:grid-cols-2 gap-4">
-                  {allSubjects.map(subject => (
+                <div className="grid md:grid-cols-2 gap-4 items-start">
+                  {getSubjectsForSemester(currentSemester).map(subject => (
                     <SubjectCard
                       key={subject}
                       subject={subject}
@@ -577,7 +649,7 @@ Si tu ne trouves pas d'information, retourne {"error": "description"}.`
                 </h2>
                 
                 <div className="grid md:grid-cols-2 gap-4">
-                  {allSubjects.map(subject => (
+                  {getSubjectsForSemester(currentSemester).map(subject => (
                     <PreviousSemestersCard
                       key={subject}
                       subject={subject}
@@ -978,100 +1050,116 @@ function ExamSimulatorCard({ subject, erfahrungsnote, examGrade, onExamGradeChan
   );
 }
 
-function SemesterSimulatorCard({ subject, currentGrades, currentAverage, requiredGrade, simulatedGrade, onSimulatedGradeChange, simulatedAverage, goalGrade }) {
+function SemesterSimulatorCard({ subject, currentGrades, plannedControls, onAddPlan, onRemovePlan, currentAverage, simulatedAverage, goalGrade, onGoalChange, computeRequired }) {
   const [grade, setGrade] = useState('');
   const [weight, setWeight] = useState('1');
+  const [assumedWeight, setAssumedWeight] = useState('1');
 
-  const handleSimulate = () => {
-    if (grade && weight) {
-      let parsedWeight;
-      if (weight.includes('/')) {
-        const [num, den] = weight.split('/').map(n => parseFloat(n.trim()));
-        parsedWeight = num / den;
-      } else if (weight.includes('%')) {
-        parsedWeight = parseFloat(weight.replace('%', '').trim()) / 100;
-      } else {
-        parsedWeight = parseFloat(weight);
-      }
-      onSimulatedGradeChange(grade, parsedWeight);
+  const parseWeight = (w) => {
+    if (typeof w !== 'string') return parseFloat(w);
+    if (w.includes('/')) {
+      const [num, den] = w.split('/').map(n => parseFloat(n.trim()));
+      return num / den;
+    }
+    if (w.includes('%')) {
+      return parseFloat(w.replace('%', '').trim()) / 100;
+    }
+    return parseFloat(w);
+  };
+
+  const handleAdd = () => {
+    if (!grade || !weight) return;
+    const pw = parseWeight(weight);
+    if (!isNaN(pw)) {
+      onAddPlan(parseFloat(grade), pw);
+      setGrade('');
+      setWeight('1');
     }
   };
 
   const totalCurrentWeight = currentGrades.reduce((sum, g) => sum + g.weight, 0);
+  const totalPlannedWeight = (plannedControls || []).reduce((sum, p) => sum + parseFloat(p.weight), 0);
+  const requiredWithPlans = computeRequired(parseWeight(assumedWeight));
 
   return (
     <div className="border-2 border-blue-200 rounded-lg p-4 bg-gradient-to-r from-blue-50 to-cyan-50">
-      <h3 className="font-semibold text-gray-800 mb-2 text-sm">{subject}</h3>
-      
-      <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-        <div>
-          <div className="text-gray-600">Moyenne actuelle</div>
-          <div className="font-bold text-lg text-blue-900">
-            {currentAverage?.toFixed(1) || '-'}
-          </div>
-          <div className="text-gray-500 text-xs">
-            ({currentGrades.length} notes, Σ pond: {totalCurrentWeight.toFixed(1)})
-          </div>
-        </div>
-        <div>
-          <div className="text-gray-600">Note minimale requise</div>
-          <div className={`font-bold text-lg ${
-            requiredGrade && (requiredGrade < 1 || requiredGrade > 6) 
-              ? 'text-orange-600' 
-              : requiredGrade && requiredGrade <= 4 
-                ? 'text-green-600'
-                : 'text-blue-900'
-          }`}>
-            {requiredGrade?.toFixed(1) || '-'}
-          </div>
-          <div className="text-gray-500 text-xs">
-            (avec pond. 1)
-          </div>
-        </div>
-      </div>
-
-      {requiredGrade && (requiredGrade < 1 || requiredGrade > 6) && (
-        <div className="mb-3 p-2 bg-orange-100 rounded text-xs text-orange-800">
-          ⚠️ Objectif {requiredGrade < 1 ? 'déjà atteint' : 'impossible à atteindre'}
-        </div>
-      )}
-
-      <div className="border-t border-blue-200 pt-3 mt-3">
-        <label className="block text-xs text-gray-700 mb-2 font-semibold">
-          Simuler un contrôle supplémentaire
-        </label>
-        <div className="flex gap-2 mb-2">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-gray-800 text-sm">{subject}</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-600">Objectif:</span>
           <input
             type="number"
             step="0.5"
             min="1"
             max="6"
-            placeholder="Note"
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-            className="flex-1 p-2 border border-gray-300 rounded text-sm"
+            value={goalGrade}
+            onChange={(e) => onGoalChange(parseFloat(e.target.value))}
+            className="w-16 p-1 border border-indigo-300 rounded text-sm font-bold text-center"
           />
-          <input
-            type="text"
-            placeholder="Pond."
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            className="w-24 p-2 border border-gray-300 rounded text-sm"
-          />
-          <button 
-            onClick={handleSimulate}
-            className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            <Calculator className="w-4 h-4" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+        <div>
+          <div className="text-gray-600">Moyenne actuelle</div>
+          <div className="font-bold text-lg text-blue-900">{currentAverage?.toFixed(1) || '-'}</div>
+          <div className="text-gray-500 text-xs">({currentGrades.length} notes, Σ pond: {totalCurrentWeight.toFixed(1)})</div>
+        </div>
+        <div>
+          <div className="text-gray-600">Note requise (pond. suivante)</div>
+          <div className={`font-bold text-lg ${
+            requiredWithPlans && (requiredWithPlans < 1 || requiredWithPlans > 6)
+              ? 'text-orange-600'
+              : requiredWithPlans && requiredWithPlans <= 4
+                ? 'text-green-600'
+                : 'text-blue-900'
+          }`}>
+            {requiredWithPlans?.toFixed(1) || '-'}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-gray-500 text-xs">pond:</span>
+            <input
+              type="text"
+              value={assumedWeight}
+              onChange={(e) => setAssumedWeight(e.target.value)}
+              className="w-20 p-1 border border-gray-300 rounded text-xs"
+            />
+          </div>
+        </div>
+      </div>
+
+      {requiredWithPlans && (requiredWithPlans < 1 || requiredWithPlans > 6) && (
+        <div className="mb-3 p-2 bg-orange-100 rounded text-xs text-orange-800">
+          ⚠️ Objectif {requiredWithPlans < 1 ? 'déjà atteint' : 'impossible à atteindre'}
+        </div>
+      )}
+
+      <div className="border-t border-blue-200 pt-3 mt-3">
+        <label className="block text-xs text-gray-700 mb-2 font-semibold">Ajouter des contrôles planifiés</label>
+        <div className="flex gap-2 mb-2">
+          <input type="number" step="0.5" min="1" max="6" placeholder="Note" value={grade} onChange={(e) => setGrade(e.target.value)} className="flex-1 p-2 border border-gray-300 rounded text-sm" />
+          <input type="text" placeholder="Pond." value={weight} onChange={(e) => setWeight(e.target.value)} className="w-24 p-2 border border-gray-300 rounded text-sm" />
+          <button onClick={handleAdd} className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+            <Plus className="w-4 h-4" />
           </button>
         </div>
 
+        {plannedControls?.length > 0 && (
+          <div className="mb-3">
+            <div className="text-xs text-gray-600 mb-1">Contrôles planifiés (Σ pond: {totalPlannedWeight.toFixed(1)})</div>
+            <ul className="space-y-1">
+              {plannedControls.map(p => (
+                <li key={p.id} className="flex items-center justify-between text-xs bg-white rounded p-2 border">
+                  <span>Note {p.grade.toFixed(1)} × {p.weight}</span>
+                  <button onClick={() => onRemovePlan(p.id)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {simulatedAverage && (
-          <div className={`text-center p-3 rounded-lg font-bold ${
-            simulatedAverage >= goalGrade 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-orange-100 text-orange-800'
-          }`}>
+          <div className={`text-center p-3 rounded-lg font-bold ${simulatedAverage >= goalGrade ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
             Moyenne simulée: {simulatedAverage.toFixed(1)}
           </div>
         )}
