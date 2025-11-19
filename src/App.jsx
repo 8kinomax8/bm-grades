@@ -30,6 +30,11 @@ export default function BMGradeCalculator() {
     saveData();
   }, [subjects, semesterGrades, bmType, currentSemester]);
 
+  useEffect(() => {
+    // Réinitialiser le résultat d'analyse lors du changement d'onglet
+    setAnalysisResult(null);
+  }, [activeTab]);
+
   const loadData = () => {
     try {
       const data = storage.get('bm-calculator-data');
@@ -61,7 +66,7 @@ export default function BMGradeCalculator() {
     }
   };
 
-  const analyzeBulletin = async (file) => {
+  const analyzeBulletin = async (file, scanType = 'Bulletin') => {
     setIsAnalyzing(true);
     setAnalysisResult(null);
 
@@ -74,15 +79,27 @@ export default function BMGradeCalculator() {
       });
 
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/analyze`, {
+      const response = await fetch(`${apiUrl}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Data, mediaType: file.type })
+        body: JSON.stringify({ 
+          image: `data:${file.type};base64,${base64Data}`,
+          scanType: scanType
+        })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      }
+
       const data = await response.json();
-      const textContent = data.content.find(c => c.type === 'text')?.text || '';
       
+      if (!data.content || !data.content[0] || !data.content[0].text) {
+        throw new Error('Réponse API invalide: ' + JSON.stringify(data));
+      }
+      
+      const textContent = data.content[0].text;
       const cleanText = textContent.replace(/```json|```/g, '').trim();
       const result = JSON.parse(cleanText);
 
@@ -112,33 +129,77 @@ export default function BMGradeCalculator() {
           return lekSubjects.has(candidate) ? candidate : null;
         };
 
-        const mappedGrades = {};
-        const grades = result.grades || {};
-        Object.entries(grades).forEach(([k, v]) => {
-          const canon = normalize(k);
-          if (!canon) return;
-          mappedGrades[canon] = parseFloat(v);
-        });
-
-        setAnalysisResult({ semester: result.semester ?? currentSemester, grades: mappedGrades });
-
-        if (Object.keys(mappedGrades).length > 0) {
-          const sem = result.semester ?? currentSemester;
-          const newSemesterGrades = { ...semesterGrades };
-          Object.entries(mappedGrades).forEach(([subject, grade]) => {
-            if (!newSemesterGrades[subject]) newSemesterGrades[subject] = {};
-            newSemesterGrades[subject][sem] = grade;
+        // SAL scan: traitement des contrôles individuels avec dates
+        if (scanType === 'SAL' && result.controls) {
+          const newSubjects = { ...subjects };
+          const addedControls = [];
+          
+          result.controls.forEach((control) => {
+            const canon = normalize(control.subject);
+            if (!canon) return;
+            
+            // Créer un identifiant unique basé sur matière + date + note
+            const controlId = `${canon}-${control.date}-${control.grade}`;
+            
+            // Vérifier si ce contrôle existe déjà
+            const existingGrades = newSubjects[canon] || [];
+            const alreadyExists = existingGrades.some(g => 
+              g.controlId === controlId || 
+              (g.date === control.date && Math.abs(g.grade - control.grade) < 0.01)
+            );
+            
+            if (!alreadyExists) {
+              if (!newSubjects[canon]) newSubjects[canon] = [];
+              newSubjects[canon] = [...newSubjects[canon], {
+                grade: parseFloat(control.grade),
+                weight: 1,
+                displayWeight: '1',
+                date: control.date,
+                name: control.name || '',
+                controlId: controlId,
+                id: Date.now() + Math.random()
+              }];
+              addedControls.push({ subject: canon, ...control });
+            }
           });
-          setSemesterGrades(newSemesterGrades);
+          
+          setSubjects(newSubjects);
+          setAnalysisResult({ 
+            semester: 'current', 
+            controls: addedControls,
+            message: `${addedControls.length} contrôle(s) ajouté(s)`
+          });
+        }
+        // Bulletin scan: traitement des moyennes semestrielles
+        else if (result.grades) {
+          const mappedGrades = {};
+          const grades = result.grades || {};
+          Object.entries(grades).forEach(([k, v]) => {
+            const canon = normalize(k);
+            if (!canon) return;
+            mappedGrades[canon] = parseFloat(v);
+          });
+
+          setAnalysisResult({ semester: result.semester ?? currentSemester, grades: mappedGrades });
+
+          if (Object.keys(mappedGrades).length > 0) {
+            const sem = result.semester ?? currentSemester;
+            const newSemesterGrades = { ...semesterGrades };
+            Object.entries(mappedGrades).forEach(([subject, grade]) => {
+              if (!newSemesterGrades[subject]) newSemesterGrades[subject] = {};
+              newSemesterGrades[subject][sem] = grade;
+            });
+            setSemesterGrades(newSemesterGrades);
+          }
         }
       }
     } catch (error) {
-      console.error('Erreur analyse:', error);
-      setAnalysisResult({ error: 'Erreur lors de l\'analyse de l\'image. Vérifiez le format.' });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+        console.error('Erreur analyse:', error);
+        setAnalysisResult({ error: 'Erreur lors de l\'analyse de l\'image. Vérifiez le format.' });
+      } finally {
+        setIsAnalyzing(false);
+      }
+    };
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
@@ -151,7 +212,7 @@ export default function BMGradeCalculator() {
         return;
       }
       setLastScanType('SAL');
-      analyzeBulletin(file);
+      analyzeBulletin(file, 'SAL');
       return;
     }
 
@@ -159,7 +220,7 @@ export default function BMGradeCalculator() {
     if (activeTab === 'previous') {
       if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         setLastScanType('Bulletin');
-        analyzeBulletin(file);
+        analyzeBulletin(file, 'Bulletin');
       }
     }
   };
@@ -293,6 +354,39 @@ export default function BMGradeCalculator() {
     return roundToHalfOrWhole(total / avgs.length);
   };
 
+  const calculateSemesterPromotionStatus = () => {
+    const subjectsInSemester = getSubjectsForSemester(currentSemester);
+    // Exclure IDAF (Interdisziplinäres Arbeiten) du calcul de promotion
+    const promotionSubjects = subjectsInSemester.filter(s => s !== 'Interdisziplinäres Arbeiten');
+    const avgs = promotionSubjects.map(subject => simulateSemesterAverage(subject)).filter(a => a !== null);
+    
+    if (avgs.length === 0) return null;
+    
+    // Moyenne arrondie au dixième (pas au demi-point)
+    const overallAvgRaw = avgs.reduce((sum, a) => sum + a, 0) / avgs.length;
+    const overallAvg = Math.round(overallAvgRaw * 10) / 10;
+    
+    const failingGrades = avgs.filter(a => a < 4.0);
+    const failingCount = failingGrades.length;
+    const deficit = failingGrades.reduce((sum, grade) => sum + (4.0 - grade), 0);
+    
+    const condition1 = overallAvg >= 4.0;
+    const condition2 = deficit <= 2.0;
+    const condition3 = failingCount <= 2;
+    
+    const isPromoted = condition1 && condition2 && condition3;
+    
+    return {
+      overallAvg,
+      failingCount,
+      deficit: Math.round(deficit * 10) / 10,
+      condition1,
+      condition2,
+      condition3,
+      isPromoted
+    };
+  };
+
   const calculateRequiredExamGrade = (subject, targetMaturnote) => {
     const erfahrungsnote = calculateErfahrungsnote(subject);
     if (!erfahrungsnote) return null;
@@ -421,8 +515,8 @@ export default function BMGradeCalculator() {
   const passingConditions = checkPassingConditions();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto p-4">
         <header className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <h1 className="text-3xl font-bold text-indigo-900 mb-4 flex items-center gap-3">
             <Book className="w-8 h-8" />
@@ -500,15 +594,32 @@ export default function BMGradeCalculator() {
                     <p className="text-red-800">❌ {analysisResult.error}</p>
                   ) : (
                     <div>
-                      <p className="text-green-800 font-bold mb-2">✓ {(lastScanType || 'Bulletin')} analysé - Semestre {analysisResult.semester}</p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                        {Object.entries(analysisResult.grades).map(([subject, grade]) => (
-                          <div key={subject} className="bg-white p-2 rounded">
-                            <span className="text-gray-700">{subject}:</span>
-                            <span className="font-bold ml-1">{grade}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <p className="text-green-800 font-bold mb-2">
+                        ✓ {analysisResult.message || `${(lastScanType || 'Bulletin')} analysé - Semestre ${analysisResult.semester}`}
+                      </p>
+                      {analysisResult.grades && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                          {Object.entries(analysisResult.grades).map(([subject, grade]) => (
+                            <div key={subject} className="bg-white p-2 rounded">
+                              <span className="text-gray-700">{subject}:</span>
+                              <span className="font-bold ml-1">{grade}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {analysisResult.controls && (
+                        <div className="space-y-2 text-sm">
+                          {analysisResult.controls.map((control, idx) => (
+                            <div key={idx} className="bg-white p-2 rounded">
+                              <span className="text-gray-700">{control.subject}:</span>
+                              <span className="font-bold ml-1">{control.grade}</span>
+                              <span className="text-gray-500 text-xs ml-2">
+                                ({new Date(control.date).toLocaleDateString('fr-CH')})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -558,39 +669,70 @@ export default function BMGradeCalculator() {
               <div className="bg-white rounded-2xl shadow-xl p-6">
                 <h2 className="text-xl font-bold text-indigo-900 mb-4 flex items-center gap-2">
                   <Target className="w-6 h-6" />
-                  Simulateur de Moyenne Semestrielle
+                  Simulateur de Semestre
                 </h2>
                 
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-xl p-4 border-2 border-indigo-200">
-                      <div className="text-sm text-gray-600 mb-1">Semestre actuel</div>
-                      <div className="text-3xl font-bold text-indigo-900">S{currentSemester}</div>
+                {/* Statut de promotion semestrielle en haut */}
+                {calculateSemesterPromotionStatus() && (
+                  <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-indigo-900">État de Promotion Semestrielle (BM1) - Semestre {currentSemester}</h3>
+                      <div className={`px-4 py-2 rounded-lg font-bold text-sm ${
+                        calculateSemesterPromotionStatus().isPromoted 
+                          ? 'bg-green-200 text-green-900' 
+                          : 'bg-red-200 text-red-900'
+                      }`}>
+                        {calculateSemesterPromotionStatus().isPromoted ? '✅ Promu(e)' : '❌ Non promu(e)'}
+                      </div>
                     </div>
-                    <div className="bg-white rounded-xl p-4 border-2 border-indigo-200">
-                      <div className="text-sm text-gray-600 mb-1">Moyenne générale semestrielle simulée</div>
-                      <div className="text-3xl font-bold text-indigo-900">
-                        {calculateOverallSimulatedSemesterAverage()?.toFixed(1) || '-'}
+                    
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {/* Notes insuffisantes */}
+                      <div className={`p-4 rounded-xl ${calculateSemesterPromotionStatus().failingCount <= 2 ? 'bg-green-100' : 'bg-red-100'}`}>
+                        <div className="text-sm text-gray-700 mb-1">Notes insuffisantes (&lt; 4.0)</div>
+                        <div className={`text-3xl font-bold ${calculateSemesterPromotionStatus().failingCount <= 2 ? 'text-green-800' : 'text-red-800'}`}>
+                          {calculateSemesterPromotionStatus().failingCount}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Max: 2</div>
+                      </div>
+
+                      {/* Somme des écarts */}
+                      <div className={`p-4 rounded-xl ${calculateSemesterPromotionStatus().deficit <= 2.0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                        <div className="text-sm text-gray-700 mb-1">Somme des écarts</div>
+                        <div className={`text-3xl font-bold ${calculateSemesterPromotionStatus().deficit <= 2.0 ? 'text-green-800' : 'text-red-800'}`}>
+                          {calculateSemesterPromotionStatus().deficit.toFixed(1)}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Max: 2.0</div>
+                      </div>
+
+                      {/* Moyenne générale */}
+                      <div className={`p-4 rounded-xl ${calculateSemesterPromotionStatus().overallAvg >= 4.0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                        <div className="text-sm text-gray-700 mb-1">Moyenne générale (sans IDAF)</div>
+                        <div className={`text-3xl font-bold ${calculateSemesterPromotionStatus().overallAvg >= 4.0 ? 'text-green-800' : 'text-red-800'}`}>
+                          {calculateSemesterPromotionStatus().overallAvg.toFixed(1)}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">Min: 4.0</div>
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Objectif par défaut
-                    </label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="1"
-                      max="6"
-                      value={semesterGoal}
-                      onChange={(e) => setSemesterGoal(parseFloat(e.target.value))}
-                      className="w-full p-3 border-2 border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-lg font-bold"
-                    />
-                  </div>
+                )}
+
+                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Objectif par défaut pour les matières
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="1"
+                    max="6"
+                    value={semesterGoal}
+                    onChange={(e) => setSemesterGoal(parseFloat(e.target.value))}
+                    className="w-full p-3 border-2 border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-lg font-bold"
+                  />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
                   {getSubjectsForSemester(currentSemester).map(subject => {
                     const subjectGoal = subjectGoals[subject] ?? semesterGoal;
                     return (
@@ -907,9 +1049,17 @@ function SubjectCard({ subject, grades, onAddGrade, onRemoveGrade, semesterAvera
           <div className="space-y-2 mb-3">
             {grades.map(g => (
               <div key={g.id} className="flex items-center justify-between bg-white p-2 rounded">
-                <span className="text-sm">
-                  Note: <strong>{g.grade.toFixed(1)}</strong> × {g.displayWeight || g.weight}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm">
+                    Note: <strong>{g.grade.toFixed(1)}</strong> × {g.displayWeight || g.weight}
+                  </span>
+                  {g.date && (
+                    <span className="text-xs text-gray-500">
+                      {new Date(g.date).toLocaleDateString('fr-CH')}
+                      {g.name && ` - ${g.name}`}
+                    </span>
+                  )}
+                </div>
                 <button onClick={() => onRemoveGrade(subject, g.id)} className="text-red-500 hover:text-red-700">
                   <Trash2 className="w-4 h-4" />
                 </button>
