@@ -6,13 +6,13 @@ export const BM_SUBJECTS = {
     grundlagen: ['Deutsch', 'Englisch', 'Französisch', 'Mathematik'],
     schwerpunkt: ['Naturwissenschaften'],
     erganzung: ['Geschichte und Politik', 'Wirtschaft und Recht'],
-    interdisziplinar: ['Interdisziplinäres Arbeiten']
+    interdisziplinar: ['Interdisziplinäres Arbeiten in den Fächern']
   },
   DL: {
     grundlagen: ['Deutsch', 'Englisch', 'Französisch', 'Mathematik'],
     schwerpunkt: ['Finanz- und Rechnungswesen', 'Wirtschaft und Recht'],
     erganzung: ['Geschichte und Politik'],
-    interdisziplinar: ['Interdisziplinäres Arbeiten']
+    interdisziplinar: ['Interdisziplinäres Arbeiten in den Fächern']
   }
 };
 
@@ -36,7 +36,7 @@ export const LEKTIONENTAFEL = {
     'Naturwissenschaften': [3, 4, 5, 6, 7, 8],
     'Geschichte und Politik': [4, 5, 6],
     'Wirtschaft und Recht': [1, 2],
-    'Interdisziplinäres Arbeiten': [1, 2, 3, 4, 5, 6, 7, 8]
+    'Interdisziplinäres Arbeiten in den Fächern': [1, 2, 3, 4, 5, 6, 7, 8]
   },
   DL: {
     'Deutsch': [1, 2, 5, 6, 7, 8],
@@ -46,6 +46,6 @@ export const LEKTIONENTAFEL = {
     'Finanz- und Rechnungswesen': [3, 4, 5, 6, 7, 8],
     'Wirtschaft und Recht': [1, 2],
     'Geschichte und Politik': [4, 5, 6],
-    'Interdisziplinäres Arbeiten': [1, 2, 3, 4, 5, 6, 7, 8]
+    'Interdisziplinäres Arbeiten in den Fächern': [1, 2, 3, 4, 5, 6, 7, 8]
   }
 };

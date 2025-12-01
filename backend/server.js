@@ -22,11 +22,7 @@ Analyse ce bulletin scolaire suisse de Berufsmaturität. Extrait UNIQUEMENT les 
   }
 }
 
-Matières possibles: Deutsch, Englisch, Französisch, Mathematik Grundlagen, Mathematik Schwerpunkt, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten.
-
-IMPORTANT: Pour "Mathematik" dans le bulletin:
-- Si c'est le semestre 1-4: utilise "Mathematik Grundlagen"
-- Si c'est le semestre 5-8: utilise "Mathematik Schwerpunkt"
+Matières possibles: Deutsch, Englisch, Französisch, Mathematik, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten in den Fächern.
 
 Si tu ne trouves pas d'information, retourne {"error": "description"}.
 `;
@@ -49,18 +45,18 @@ RÈGLES IMPORTANTES:
 - IGNORE toutes les lignes dont le nom de matière commence par un numéro (ex: "129-INP", "202-MAT")
 - Déduis la matière à partir du nom du contrôle et/ou du début du nom de matière
 - Extrait la date de chaque contrôle (format YYYY-MM-DD si possible, sinon DD.MM.YYYY)
-- N'utilise QUE ces noms de matières canoniques: Deutsch, Englisch, Französisch, Mathematik Grundlagen, Mathematik Schwerpunkt, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten
+- N'utilise QUE ces noms de matières canoniques: Deutsch, Englisch, Französisch, Mathematik, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten in den Fächern
 
 CORRESPONDANCES (utilise directement le nom canonique):
 - DEU/Deutsch → Deutsch
 - ENG/Englisch → Englisch
 - FRA/Französisch → Französisch
-- MAT/MG/Mathematik → Mathematik Grundlagen (ou Mathematik Schwerpunkt selon le semestre)
-- NAT/NWCH/Natur → Naturwissenschaften
+- MS/MG/Mathematik → Mathematik
+- NWCH/NWPH → Naturwissenschaften
 - FRW/Finanz → Finanz- und Rechnungswesen
 - WR/Wirtschaft → Wirtschaft und Recht
 - GE/Geschichte → Geschichte und Politik
-- IDAF/Interdisziplinär → Interdisziplinäres Arbeiten
+- IDAF/Interdisziplinär → Interdisziplinäres Arbeiten in den Fächern
 
 Si tu ne trouves pas d'information, retourne {"error": "description"}.
 `;
