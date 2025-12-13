@@ -2,14 +2,24 @@ import express from "express";
 import cors from "cors";
 import fetch from "node-fetch";
 import "dotenv/config";
+import { testConnection } from "./db.js";
+import routes from "./routes.js";
 
 const app = express();
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST'],
+  origin: [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://ec2-54-224-32-168.compute-1.amazonaws.com:3001',
+    /\.amplifyapp\.com$/  // Allow all Amplify app domains
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
 app.use(express.json({ limit: "10mb" }));
+
+// API routes
+app.use('/api', routes);
 
 // 🔒 FIXED PROMPTS
 const BULLETIN_PROMPT = `
@@ -129,7 +139,13 @@ app.post("/api/scan", async (req, res) => {
   }
 });
 
-app.listen(3001, () => {
+app.listen(3001, async () => {
   console.log("Backend API running on http://localhost:3001");
   console.log("Loaded API key:", process.env.ANTHROPIC_API_KEY ? `✅ (starts with ${process.env.ANTHROPIC_API_KEY.substring(0, 10)}...)` : "❌ MISSING");
+  
+  // Test database connection
+  const dbConnected = await testConnection();
+  if (!dbConnected) {
+    console.error("⚠️ Running without database. Set RDS_HOST, RDS_USER, RDS_PASSWORD, RDS_DATABASE in .env");
+  }
 });
