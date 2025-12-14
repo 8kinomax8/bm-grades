@@ -1,7 +1,6 @@
-import mysql from 'mysql2/promise';
-import 'dotenv/config';
+import mysql from "mysql2/promise";
+import "dotenv/config";
 
-// Create connection pool
 const pool = mysql.createPool({
   host: process.env.RDS_HOST,
   user: process.env.RDS_USER,
@@ -10,19 +9,19 @@ const pool = mysql.createPool({
   port: process.env.RDS_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: { rejectUnauthorized: false } // MySQL RDS nécessite TLS implicite
 });
 
-// Test connection on startup
 export async function testConnection() {
   try {
-    const connection = await pool.getConnection();
-    await connection.ping();
-    connection.release();
-    console.log('✅ Database connected successfully');
+    const conn = await pool.getConnection();
+    await conn.ping();
+    conn.release();
+    console.log("✅ Database connected successfully (MySQL 8)");
     return true;
   } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
+    console.error("❌ Database connection failed:", error.code, error.message);
     return false;
   }
 }

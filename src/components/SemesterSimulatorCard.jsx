@@ -59,7 +59,14 @@ export default function SemesterSimulatorCard({
               min="1"
               max="6"
               value={goalGrade}
-              onChange={(e) => onGoalChange(parseFloat(e.target.value))}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                  // Round to nearest 0.5
+                  const rounded = Math.round(value * 2) / 2;
+                  onGoalChange(rounded);
+                }
+              }}
               className="w-16 p-1 border border-indigo-300 rounded text-sm font-bold text-center"
             />
           </div>

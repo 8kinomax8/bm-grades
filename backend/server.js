@@ -10,7 +10,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'http://ec2-54-224-32-168.compute-1.amazonaws.com:3001',
+    'ec2-18-207-154-148.compute-1.amazonaws.com',
     /\.amplifyapp\.com$/  // Allow all Amplify app domains
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -139,13 +139,13 @@ app.post("/api/scan", async (req, res) => {
   }
 });
 
-app.listen(3001, async () => {
-  console.log("Backend API running on http://localhost:3001");
+app.listen(3001, '0.0.0.0',async () => {
+  console.log("Backend API running on http://0.0.0.0:3001");
   console.log("Loaded API key:", process.env.ANTHROPIC_API_KEY ? `✅ (starts with ${process.env.ANTHROPIC_API_KEY.substring(0, 10)}...)` : "❌ MISSING");
   
   // Test database connection
   const dbConnected = await testConnection();
   if (!dbConnected) {
-    console.error("⚠️ Running without database. Set RDS_HOST, RDS_USER, RDS_PASSWORD, RDS_DATABASE in .env");
+    console.error("⚠️ Running without database.");
   }
 });
