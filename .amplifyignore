@@ -1,0 +1,3 @@
+# Ignore Amplify Gen 2 backend resources - deploy frontend only
+amplify/
+backend/
