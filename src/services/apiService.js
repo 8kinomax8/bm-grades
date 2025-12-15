@@ -2,7 +2,9 @@
  * Service API pour l'analyse des bulletins et screenshots SAL
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { FRONTEND_CONFIG } from '../../config.js';
+
+const API_URL = FRONTEND_CONFIG.API_URL;
 
 /**
  * Convertit un fichier en base64
@@ -28,13 +30,13 @@ export const normalizeSubjectName = (name, validSubjects) => {
   if (!name) return null;
   const raw = String(name).trim();
   
-  // Ignorer les codes numériques (ex: 129-INP, 202-MAT)
+  // Ignore numeric codes (e.g.: 129-INP, 202-MAT)
   if (/^\s*\d/.test(raw)) return null;
   
   const n = raw.toLowerCase();
   let canon = null;
   
-  // Correspondances courantes
+  // Common mappings
   if (n.startsWith('idaf') || n === 'idaf' || n.includes('interdisziplin')) {
     canon = 'Interdisziplinäres Arbeiten in den Fächern';
   } else if (n === 'frw' || n.includes('finanz')) {
@@ -57,7 +59,7 @@ export const normalizeSubjectName = (name, validSubjects) => {
   
   if (canon) return validSubjects.has(canon) ? canon : null;
   
-  // Essayer une correspondance exacte
+  // Try an exact match
   const candidate = raw.replace(/\s+/g, ' ');
   return validSubjects.has(candidate) ? candidate : null;
 };
@@ -89,7 +91,7 @@ export const analyzeBulletin = async (file, scanType = 'Bulletin') => {
     const data = await response.json();
     
     if (!data.content || !data.content[0] || !data.content[0].text) {
-      throw new Error('Réponse API invalide: ' + JSON.stringify(data));
+      throw new Error('Invalid API response: ' + JSON.stringify(data));
     }
     
     const textContent = data.content[0].text;
@@ -98,7 +100,7 @@ export const analyzeBulletin = async (file, scanType = 'Bulletin') => {
 
     return result;
   } catch (error) {
-    console.error('Erreur analyse:', error);
+    console.error('Analysis error:', error);
     throw error;
   }
 };
@@ -122,10 +124,10 @@ export const processSALScan = (result, currentSubjects, validSubjects) => {
     const canon = normalizeSubjectName(control.subject, validSubjects);
     if (!canon) return;
     
-    // Créer un identifiant unique basé sur matière + date + note
+    // Create a unique identifier based on subject + date + grade
     const controlId = `${canon}-${control.date}-${control.grade}`;
     
-    // Vérifier si ce contrôle existe déjà
+    // Check if this assessment already exists
     const existingGrades = newSubjects[canon] || [];
     const alreadyExists = existingGrades.some(g => 
       g.controlId === controlId || 

@@ -4,4 +4,3 @@
 
 export * from './calculationService';
 export * from './apiService';
-export * from './semesterGradeService';

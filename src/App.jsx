@@ -3,19 +3,53 @@ import { Book, Calculator, TrendingUp, BarChart, Target } from 'lucide-react';
 import {LineChart, Line, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { BM_SUBJECTS, EXAM_SUBJECTS, LEKTIONENTAFEL } from './constants';
 import { GradeCard, SemesterSimulatorCard, BulletinAnalysis, PromotionStatus } from './components';
-import { useLoadData, useSaveData, useGradeCalculations, useBulletinAnalysis, useAuth, useSupabaseSemesterGrades } from './hooks';
-import { useSupabaseGrades } from './hooks/useSupabaseGrades';
-import AuthPanel from './components/AuthPanel';
+import { useLoadData, useSaveData, useGradeCalculations, useBulletinAnalysis } from './hooks';
+import CognitoAuthPanel from './components/CognitoAuthPanel';
 import SemesterPrompt from './components/SemesterPrompt';
-import { roundToHalfOrWhole } from './services';
 import { storage } from './utils';
-import './styles/App.css';
+import { useAuth as useCognitoAuth } from 'react-oidc-context';
+
+const AuthBackdrop = ({ children, contentClassName = 'w-full max-w-xl' }) => (
+  <div className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-[#eef2ff] via-[#fdfbff] to-[#e5e4ff] overflow-hidden">
+    <div className="pointer-events-none absolute inset-0">
+      <div className="absolute -top-12 -right-6 h-64 w-64 rounded-full bg-indigo-200/50 blur-3xl" />
+      <div className="absolute -bottom-16 -left-10 h-72 w-72 rounded-full bg-purple-200/40 blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+    </div>
+    <div className={`relative z-10 ${contentClassName}`}>
+      {children}
+    </div>
+  </div>
+);
+
+const LoadingState = () => (
+  <div className="flex flex-col items-center gap-4 rounded-3xl bg-white/80 px-8 py-10 shadow-2xl backdrop-blur">
+    <div className="h-14 w-14 rounded-full border-4 border-indigo-100 border-t-indigo-500 animate-spin" aria-label="Loading" />
+    <div className="text-center">
+      <p className="text-lg font-semibold text-gray-900">Securing your session…</p>
+      <p className="text-sm text-gray-500">This will only take a moment</p>
+    </div>
+    <div className="flex items-center gap-2">
+      {[0, 150, 300].map(delay => (
+        <span
+          key={delay}
+          className="h-2.5 w-2.5 rounded-full bg-indigo-500 animate-bounce"
+          style={{ animationDelay: `${delay}ms` }}
+        />
+      ))}
+    </div>
+  </div>
+);
 
 export default function BMGradeCalculator() {
-  // Auth obligatoire
-  const { user, authLoading } = useAuth();
+  // Cognito authentication
+  const auth = useCognitoAuth();
   
-  // ============ État de l'application ============
+  // Map Cognito auth to expected format
+  const user = auth.isAuthenticated ? auth.user : null;
+  const authLoading = auth.isLoading;
+  
+  // ============ Application state ============
   const [bmType, setBmType] = useState('TAL');
   const [currentSemester, setCurrentSemester] = useState(1);
   const [subjects, setSubjects] = useState({});
@@ -26,20 +60,13 @@ export default function BMGradeCalculator() {
   const [maturnoteGoal, setMaturnoteGoal] = useState(5.0);
   const [activeTab, setActiveTab] = useState('current');
   const [showScrollHint, setShowScrollHint] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [showSemesterPrompt, setShowSemesterPrompt] = useState(false);
   const tabBarRef = useRef(null);
 
-  // Gestion des notes Supabase
-  const { grades, loading: gradesLoading, error: gradesError, add: addGradeRemote, remove: removeGradeRemote } = useSupabaseGrades(user);
-  
-  // Gestion des notes semestrielles Supabase
-  const { semesterGrades: supabaseSemesterGrades, loading: semesterGradesLoading, upsert: upsertSemesterGrade } = useSupabaseSemesterGrades(user);
-
-  // ============ Hooks personnalisés ============
+  // ============ Custom hooks ============
   const validSubjects = new Set(Object.keys(LEKTIONENTAFEL[bmType] || {}));
   
-  // Chargement des données au démarrage
+  // Load data on startup
   useLoadData({
     setSubjects,
     setSemesterGrades,
@@ -50,7 +77,7 @@ export default function BMGradeCalculator() {
     setMaturnoteGoal
   });
 
-  // Sauvegarde automatique
+  // Auto-save
   useSaveData({
     subjects,
     semesterGrades,
@@ -61,45 +88,11 @@ export default function BMGradeCalculator() {
     maturnoteGoal
   });
 
-  // Fonction pour ajouter un contrôle (définie avant useBulletinAnalysis)
-  const addControlToSupabase = async (subject, grade, weight, date = null, name = null) => {
-    try {
-      const { getOrCreateSubject } = await import('./services/subjectService');
-      const subjectData = await getOrCreateSubject(subject);
-      
-      let parsedWeight = typeof weight === 'number' ? weight : parseFloat(weight);
-      
-      await addGradeRemote({
-        subject_id: subjectData.id,
-        semester_number: currentSemester,
-        grade: parseFloat(grade),
-        weight: parsedWeight,
-        control_name: name,
-        source: 'SAL',
-        date: date
-      });
-    } catch (error) {
-      console.error('Erreur ajout contrôle Supabase:', error);
-    }
-  };
+  // Placeholder hooks for future persistence integration
+  const addControlToSupabase = async () => {};
+  const saveBulletinToSupabase = async () => {};
 
-  // Fonction pour sauvegarder les notes de bulletin dans Supabase
-  const saveBulletinToSupabase = async (subjectName, semester, grade) => {
-    try {
-      const { getOrCreateSubject } = await import('./services/subjectService');
-      const subjectData = await getOrCreateSubject(subjectName);
-      
-      await upsertSemesterGrade({
-        subject_id: subjectData.id,
-        semester_number: semester,
-        grade: parseFloat(grade)
-      });
-    } catch (error) {
-      console.error('Erreur sauvegarde bulletin Supabase:', error);
-    }
-  };
-
-  // Analyse de bulletins
+  // Bulletin analysis
   const {
     isAnalyzing,
     analysisResult,
@@ -116,7 +109,7 @@ export default function BMGradeCalculator() {
     saveBulletinToSupabase
   );
 
-  // Calculs
+  // Calculations
   const calculations = useGradeCalculations(
     subjects,
     semesterGrades,
@@ -125,10 +118,10 @@ export default function BMGradeCalculator() {
     bmType
   );
 
-  // Réinitialiser l'analyse lors du changement d'onglet
+  // Reset analysis when tab changes
   useEffect(() => {
     resetAnalysis();
-  }, [activeTab]);
+  }, [activeTab, resetAnalysis]);
 
   // Detect if tab bar overflows (requires horizontal scroll)
   useEffect(() => {
@@ -144,53 +137,12 @@ export default function BMGradeCalculator() {
     return () => window.removeEventListener('resize', updateHint);
   }, [activeTab]);
 
-  // Synchroniser les grades Supabase avec le state local
-  useEffect(() => {
-    if (!grades || grades.length === 0) return;
-    
-    const newSubjects = {};
-    grades.forEach(g => {
-      const subjectName = g.subject_name;
-      if (!subjectName) return;
-      
-      if (!newSubjects[subjectName]) {
-        newSubjects[subjectName] = [];
-      }
-      
-      newSubjects[subjectName].push({
-        id: g.id,
-        grade: parseFloat(g.grade),
-        weight: parseFloat(g.weight),
-        displayWeight: g.weight.toString(),
-        date: g.date,
-        name: g.control_name
-      });
-    });
-    
-    setSubjects(newSubjects);
-  }, [grades]);
-
-  // Synchroniser les semester_grades Supabase avec le state local
-  useEffect(() => {
-    if (!supabaseSemesterGrades || Object.keys(supabaseSemesterGrades).length === 0) return;
-    setSemesterGrades(supabaseSemesterGrades);
-  }, [supabaseSemesterGrades]);
-
-  // Réinitialiser settingsOpen quand l'utilisateur se déconnecte
-  useEffect(() => {
-    if (!user) {
-      setSettingsOpen(false);
-    }
-  }, [user]);
-
-  // Vérifier si on doit afficher le prompt de semestre
+  // Check if semester prompt should be displayed
   useEffect(() => {
     if (user && !authLoading) {
-      // Vérifier si un semestre est déjà sauvegardé
       const savedSemester = storage.get('currentSemester');
       const data = storage.get('bm-calculator-data');
       
-      // Si ni semestre sauvegardé ni données, afficher le prompt
       if (!savedSemester && (!data || !data.currentSemester)) {
         setShowSemesterPrompt(true);
       }
@@ -203,99 +155,49 @@ export default function BMGradeCalculator() {
     setShowSemesterPrompt(false);
   };
 
-  // Rendu conditionnel après tous les hooks
+  // Conditional rendering after all hooks
   if (authLoading) {
-    return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center text-xl">Chargement...</div>;
+    return (
+      <AuthBackdrop contentClassName="w-full max-w-sm">
+        <LoadingState />
+      </AuthBackdrop>
+    );
   }
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="w-full">
-          <AuthPanel onSettingsToggle={setSettingsOpen} />
-        </div>
-      </div>
+      <AuthBackdrop>
+        <CognitoAuthPanel />
+      </AuthBackdrop>
     );
   }
 
-  // Afficher le prompt de semestre si nécessaire
+  // Display semester prompt if necessary
   if (showSemesterPrompt) {
     return <SemesterPrompt onSelectSemester={handleSemesterSelect} />;
   }
 
-  // ============ Fonctions de gestion ============
-  // Ajout/Suppression de notes via Supabase
-  const addGrade = async (subject, grade, weight, date = null, name = null) => {
-    try {
-      // Importer dynamiquement le service
-      const { getOrCreateSubject } = await import('./services/subjectService');
-      
-      // Obtenir ou créer la matière
-      const subjectData = await getOrCreateSubject(subject);
-      
-      // Conversion du format local vers format Supabase
-      let parsedWeight;
-      if (typeof weight === 'string') {
-        if (weight.includes('/')) {
-          const [num, den] = weight.split('/').map(n => parseFloat(n.trim()));
-          parsedWeight = num / den;
-        } else if (weight.includes('%')) {
-          parsedWeight = parseFloat(weight.replace('%', '').trim()) / 100;
-        } else {
-          parsedWeight = parseFloat(weight);
-        }
-      } else {
-        parsedWeight = parseFloat(weight);
-      }
-      
-      const newGrade = await addGradeRemote({
-        subject_id: subjectData.id,
-        semester_number: currentSemester,
-        grade: parseFloat(grade),
-        weight: parsedWeight,
-        control_name: name,
-        source: name ? 'SAL' : 'manual',
-        date: date
-      });
-      
-      // Mettre à jour le state local avec le grade retourné par Supabase
-      if (newGrade) {
-        setSubjects(prev => {
-          const existing = prev[subject] || [];
-          // Éviter les doublons
-          const isDuplicate = existing.some(g => g.id === newGrade.id);
-          
-          if (isDuplicate) return prev;
-          
-          return {
-            ...prev,
-            [subject]: [...existing, {
-              id: newGrade.id,
-              grade: parseFloat(newGrade.grade),
-              weight: parseFloat(newGrade.weight),
-              displayWeight: newGrade.weight.toString(),
-              date: newGrade.date,
-              name: newGrade.control_name,
-              subject_name: subject
-            }]
-          };
-        });
-      }
-    } catch (error) {
-      console.error('Erreur ajout grade:', error);
-    }
+  // ============ Management functions ============
+  const addGrade = (subject, grade, weight, date = null, name = null) => {
+    const newGrade = {
+      id: Date.now(),
+      grade: parseFloat(grade),
+      weight: parseFloat(weight),
+      displayWeight: weight.toString(),
+      date: date,
+      name: name
+    };
+    
+    setSubjects(prev => ({
+      ...prev,
+      [subject]: [...(prev[subject] || []), newGrade]
+    }));
   };
 
-  const removeGrade = async (subject, gradeId) => {
-    try {
-      await removeGradeRemote(gradeId);
-      // Mettre à jour le state local aussi
-      setSubjects(prev => ({
-        ...prev,
-        [subject]: (prev[subject] || []).filter(g => g.id !== gradeId)
-      }));
-    } catch (error) {
-      console.error('Erreur suppression grade:', error);
-    }
+  const removeGrade = (subject, gradeId) => {
+    setSubjects(prev => ({
+      ...prev,
+      [subject]: (prev[subject] || []).filter(g => g.id !== gradeId)
+    }));
   };
 
   const addPlannedControl = (subject, grade, weight) => {
@@ -339,7 +241,7 @@ export default function BMGradeCalculator() {
     const all = [...baseGrades, ...planned];
     if (all.length === 0) return null;
     
-    // Convertir l'objectif arrondi en objectif réel (ex: 6 -> 5.75, 5 -> 4.75)
+    // Convert rounded goal to real goal (e.g.: 6 -> 5.75, 5 -> 4.75)
     const realTarget = targetAverage - 0.25;
     
     const currentTotalWeight = all.reduce((sum, g) => sum + g.weight, 0);
@@ -348,7 +250,7 @@ export default function BMGradeCalculator() {
     return Math.round(required * 10) / 10;
   };
 
-  // ============ Données pour les graphiques ============
+  // ============ Data for charts ============
   const getChartData = () => {
     const allSubjects = [
       ...BM_SUBJECTS[bmType].grundlagen,
@@ -359,7 +261,7 @@ export default function BMGradeCalculator() {
     
     return allSubjects.map(subject => {
       const erfahrungsnote = calculations.getErfahrungsnote(subject);
-      const exam = examSimulator[subject];
+      // const exam = examSimulator[subject];
       const maturnote = EXAM_SUBJECTS[bmType].includes(subject) 
         ? calculations.getExamAverage(subject)
         : erfahrungsnote;
@@ -412,26 +314,18 @@ export default function BMGradeCalculator() {
 
   // ============ Render ============
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-[#f8f9ff] via-white to-[#eef2ff] py-10 px-3">
       <div className="max-w-7xl mx-auto px-2 sm:px-4">
-        {/* Auth Panel */}
-        <div className="pt-4">
-          <AuthPanel onSettingsToggle={setSettingsOpen} />
-        </div>
-
-        {/* Contenu principal masqué si paramètres ouverts */}
-        {!settingsOpen && (
-          <>
         {/* Header */}
         <header className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <h1 className="text-3xl font-bold text-indigo-900 mb-4 flex items-center gap-3">
             <Book className="w-8 h-8" />
-            Calculateur de Notes BM
+            BM Grade Calculator
           </h1>
           
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type de BM</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">BM Type</label>
               <select 
                 value={bmType} 
                 onChange={(e) => setBmType(e.target.value)}
@@ -443,7 +337,7 @@ export default function BMGradeCalculator() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Semestre actuel</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Current Semester</label>
               <input 
                 type="number" 
                 min="1" 
@@ -462,7 +356,7 @@ export default function BMGradeCalculator() {
             <div className="text-center text-xs text-gray-500 mb-2 select-none">
               <span className="inline-flex items-center gap-1">
                 <svg width="16" height="16" fill="none" viewBox="0 0 16 16" className="inline"><path d="M2 8h12M6 4l-4 4 4 4" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 12l4-4-4-4" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Faites glisser pour voir les autres onglets
+                Scroll to see other tabs
               </span>
             </div>
           )}
@@ -483,7 +377,7 @@ export default function BMGradeCalculator() {
               }`}
             >
               <Calculator className="w-4 h-4 inline mr-2" />
-              Semestre Actuel
+              Current Semester
             </button>
             
             <button
@@ -493,7 +387,7 @@ export default function BMGradeCalculator() {
               }`}
             >
               <Target className="w-4 h-4 inline mr-2" />
-              Simulateur Semestre
+              Semester Simulator
             </button>
 
             <button
@@ -503,7 +397,7 @@ export default function BMGradeCalculator() {
               }`}
             >
               <Book className="w-4 h-4 inline mr-2" />
-              Bulletins Précédents
+              Previous Bulletins
             </button>
 
             <button
@@ -513,7 +407,7 @@ export default function BMGradeCalculator() {
               }`}
             >
               <TrendingUp className="w-4 h-4 inline mr-2" />
-              Examens Finaux
+              Final Exams
             </button>
 
             <button
@@ -523,7 +417,7 @@ export default function BMGradeCalculator() {
               }`}
             >
               <BarChart className="w-4 h-4 inline mr-2" />
-              Graphiques
+              Charts
             </button>
           </div>
 
@@ -532,10 +426,10 @@ export default function BMGradeCalculator() {
             <div>
               <PromotionStatus 
                 promotionStatus={calculations.getSimulatedPromotionStatus()}
-                title="État de Promotion Semestrielle (BM1)"
+                title="Semester Promotion Status (BM1)"
               />
               
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Simulateur de Semestre</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Semester Simulator</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 {currentSemesterSubjects.map(subject => {
                   const currentGrades = subjects[subject] || [];
@@ -572,10 +466,10 @@ export default function BMGradeCalculator() {
                 activeTab={activeTab}
               />
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Semestre Actuel (S{currentSemester})</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">Current Semester (S{currentSemester})</h2>
                 <div className="grid md:grid-cols-2 gap-4">
                   {currentSemesterSubjects.map(subject => {
-                    // Utiliser les notes du state local (subjects) qui contient les détails
+                    // Use grades from local state (subjects) which contains the details
                     const subjectGrades = subjects[subject] || [];
                     return (
                       <GradeCard
@@ -605,7 +499,7 @@ export default function BMGradeCalculator() {
                 activeTab={activeTab}
               />
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Bulletins Précédents</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">Previous Bulletins</h2>
                 <div className="grid md:grid-cols-2 gap-4">
                   {allSubjects.map(subject => {
                     const semGrades = semesterGrades[subject] || {};
@@ -625,7 +519,7 @@ export default function BMGradeCalculator() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-gray-500 text-sm mb-3">Aucune note semestrielle</p>
+                          <p className="text-gray-500 text-sm mb-3">No semester grades</p>
                         )}
                         
                         {erfahrungsnote && (
@@ -647,16 +541,16 @@ export default function BMGradeCalculator() {
           {/* Exam Tab */}
           {activeTab === 'exam' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Examens Finaux</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Final Exams</h2>
               
               <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="font-semibold text-blue-900 mb-1">Moyenne Générale (Maturnote)</h3>
-                    <p className="text-xs text-gray-600">Moyenne pondérée de toutes les matières d'examen</p>
+                    <h3 className="font-semibold text-blue-900 mb-1">Overall Average (Maturnote)</h3>
+                    <p className="text-xs text-gray-600">Weighted average of all exam subjects</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-600">Objectif:</span>
+                    <span className="text-xs text-gray-600">Goal:</span>
                     <input
                       type="number"
                       step="0.1"
@@ -670,7 +564,7 @@ export default function BMGradeCalculator() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-sm text-gray-600 mb-1">Moyenne actuelle</div>
+                    <div className="text-sm text-gray-600 mb-1">Current average</div>
                     <div className={`text-3xl font-bold ${
                       calculations.getOverallAverage() && calculations.getOverallAverage() < 4.0
                         ? 'text-red-700'
@@ -679,7 +573,7 @@ export default function BMGradeCalculator() {
                       {calculations.getOverallAverage()?.toFixed(1) || '-'}
                     </div>
                     {calculations.getOverallAverage() && calculations.getOverallAverage() < 4.0 && (
-                      <div className="text-xs text-red-600 font-semibold mt-1">⚠️ En dessous de 4.0</div>
+                      <div className="text-xs text-red-600 font-semibold mt-1">⚠️ Below 4.0</div>
                     )}
                   </div>
                   {calculations.getOverallAverage() && (
@@ -691,10 +585,10 @@ export default function BMGradeCalculator() {
                           : 'bg-orange-100 text-orange-800'
                     }`}>
                       {calculations.getOverallAverage() < 4.0
-                        ? `⚠️ Dangereux: ${(4.0 - calculations.getOverallAverage()).toFixed(1)} points manquants`
+                        ? `⚠️ Dangerous: ${(4.0 - calculations.getOverallAverage()).toFixed(1)} points missing`
                         : calculations.getOverallAverage() >= maturnoteGoal
-                          ? '✅ Objectif atteint !'
-                          : `📊 ${(maturnoteGoal - calculations.getOverallAverage()).toFixed(1)} points restants`
+                          ? '✅ Goal achieved!'
+                          : `📊 ${(maturnoteGoal - calculations.getOverallAverage()).toFixed(1)} points remaining`
                       }
                     </div>
                   )}
@@ -711,7 +605,7 @@ export default function BMGradeCalculator() {
                   const erfahrungsnote = calculations.getErfahrungsnote(subject);
                   const examGrade = examSimulator[subject];
                   const maturnote = calculations.getExamAverage(subject);
-                  // Utiliser directement l'objectif entré (au dixième)
+                  // Use the entered goal directly (to the tenth)
                   const requiredExam = calculations.getRequiredExamGrade(subject, maturnoteGoal);
                   
                   return (
@@ -724,7 +618,7 @@ export default function BMGradeCalculator() {
                           <div className="font-bold text-lg">{erfahrungsnote?.toFixed(1) || '-'}</div>
                         </div>
                         <div>
-                          <span className="text-gray-600">Note requise:</span>
+                          <span className="text-gray-600">Required grade:</span>
                           <div className="font-bold text-lg text-blue-600">
                             {requiredExam?.toFixed(1) || '-'}
                           </div>
@@ -732,7 +626,7 @@ export default function BMGradeCalculator() {
                       </div>
 
                       <div className="mb-3">
-                        <label className="block text-xs text-gray-700 mb-1">Note d'examen simulée</label>
+                        <label className="block text-xs text-gray-700 mb-1">Simulated exam grade</label>
                         <input
                           type="number"
                           step="0.5"
@@ -778,11 +672,11 @@ export default function BMGradeCalculator() {
           {/* Charts Tab */}
           {activeTab === 'charts' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Graphiques et Statistiques</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Charts and Statistics</h2>
               
               {getSubjectProgressData().length > 0 && (
                 <div className="mb-8 bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-xl font-semibold mb-4">Évolution par Semestre</h3>
+                  <h3 className="text-xl font-semibold mb-4">Evolution by Semester</h3>
                   <ResponsiveContainer width="100%" height={400}>
                     <LineChart data={getSubjectProgressData()}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -809,7 +703,7 @@ export default function BMGradeCalculator() {
 
               {getChartData().length > 0 && (
                 <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-xl font-semibold mb-4">Comparaison Erfahrungsnote vs Maturnote</h3>
+                  <h3 className="text-xl font-semibold mb-4">Comparison Erfahrungsnote vs Maturnote</h3>
                   <ResponsiveContainer width="100%" height={400}>
                     <RechartsBarChart data={getChartData()}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -840,8 +734,6 @@ export default function BMGradeCalculator() {
             </div>
           )}
         </div>
-        </>
-        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 /**
- * Composant pour simuler une moyenne semestrielle avec des contrôles planifiés
+ * Component to simulate a semester average with planned assessments
  */
 export default function SemesterSimulatorCard({
   subject,
@@ -52,35 +52,42 @@ export default function SemesterSimulatorCard({
         <h3 className="font-semibold text-gray-800 text-sm">{subject}</h3>
         <div className="flex flex-col items-end gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">Objectif:</span>
+            <span className="text-xs text-gray-600">Goal:</span>
             <input
               type="number"
               step="0.5"
               min="1"
               max="6"
               value={goalGrade}
-              onChange={(e) => onGoalChange(parseFloat(e.target.value))}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                  // Round to nearest 0.5
+                  const rounded = Math.round(value * 2) / 2;
+                  onGoalChange(rounded);
+                }
+              }}
               className="w-16 p-1 border border-indigo-300 rounded text-sm font-bold text-center"
             />
           </div>
           <div className="text-xs text-gray-500 italic">
-            (Calcul pour {(goalGrade - 0.25).toFixed(2)})
+            (Calculated for {(goalGrade - 0.25).toFixed(2)})
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
         <div>
-          <div className="text-gray-600">Moyenne actuelle</div>
+          <div className="text-gray-600">Current average</div>
           <div className="font-bold text-lg text-blue-900">
             {currentAverage?.toFixed(1) || '-'}
           </div>
           <div className="text-gray-500 text-xs">
-            ({currentGrades.length} notes, Σ pond: {totalCurrentWeight.toFixed(1)})
+            ({currentGrades.length} grades, Σ wgt: {totalCurrentWeight.toFixed(1)})
           </div>
         </div>
         <div>
-          <div className="text-gray-600">Note requise (pond. suivante)</div>
+          <div className="text-gray-600">Required grade (next wgt.)</div>
           <div className={`font-bold text-lg ${
             requiredWithPlans && (requiredWithPlans < 1 || requiredWithPlans > 6)
               ? 'text-orange-600'
@@ -91,7 +98,7 @@ export default function SemesterSimulatorCard({
             {requiredWithPlans?.toFixed(1) || '-'}
           </div>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-gray-500 text-xs">pond:</span>
+            <span className="text-gray-500 text-xs">wgt:</span>
             <input
               type="text"
               value={assumedWeight}
@@ -104,13 +111,13 @@ export default function SemesterSimulatorCard({
 
       {requiredWithPlans && (requiredWithPlans < 1 || requiredWithPlans > 6) && (
         <div className="mb-3 p-2 bg-orange-100 rounded text-xs text-orange-800">
-          ⚠️ Objectif {requiredWithPlans < 1 ? 'déjà atteint' : 'impossible à atteindre'}
+          ⚠️ Goal {requiredWithPlans < 1 ? 'already achieved' : 'impossible to reach'}
         </div>
       )}
 
       <div className="border-t border-blue-200 pt-3 mt-3">
         <label className="block text-xs text-gray-700 mb-2 font-semibold">
-          Ajouter des contrôles planifiés
+          Add planned assessments
         </label>
         <div className="flex gap-2 mb-2">
           <input
@@ -118,14 +125,14 @@ export default function SemesterSimulatorCard({
             step="0.5"
             min="1"
             max="6"
-            placeholder="Note"
+            placeholder="Grade"
             value={grade}
             onChange={(e) => setGrade(e.target.value)}
             className="flex-1 p-2 border border-gray-300 rounded text-sm"
           />
           <input
             type="text"
-            placeholder="Pond."
+            placeholder="Wgt."
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             className="w-24 p-2 border border-gray-300 rounded text-sm"
@@ -141,7 +148,7 @@ export default function SemesterSimulatorCard({
         {plannedControls?.length > 0 && (
           <div className="mb-3">
             <div className="text-xs text-gray-600 mb-1">
-              Contrôles planifiés (Σ pond: {totalPlannedWeight.toFixed(1)})
+              Planned assessments (Σ wgt: {totalPlannedWeight.toFixed(1)})
             </div>
             <ul className="space-y-1">
               {plannedControls.map(p => (
@@ -149,7 +156,7 @@ export default function SemesterSimulatorCard({
                   key={p.id}
                   className="flex items-center justify-between text-xs bg-white rounded p-2 border"
                 >
-                  <span>Note {p.grade.toFixed(1)} × {p.weight}</span>
+                  <span>Grade {p.grade.toFixed(1)} × {p.weight}</span>
                   <button
                     onClick={() => onRemovePlan(p.id)}
                     className="text-red-600 hover:text-red-800"
@@ -168,7 +175,7 @@ export default function SemesterSimulatorCard({
               ? 'bg-green-100 text-green-800'
               : 'bg-orange-100 text-orange-800'
           }`}>
-            Moyenne simulée: {simulatedAverage.toFixed(1)}
+            Simulated average: {simulatedAverage.toFixed(1)}
           </div>
         )}
       </div>

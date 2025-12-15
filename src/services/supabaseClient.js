@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Chargement des variables d'environnement (exposées par Vite en prefixant VITE_)
+// Load environment variables (exposed by Vite with VITE_ prefix)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-// Vérifications basiques pour éviter un silence en production si variables manquantes
+// Basic checks to avoid silent failures in production if variables are missing
 if (!supabaseUrl || !supabaseKey) {
   // eslint-disable-next-line no-console
-  console.warn('[Supabase] URL ou clé publique manquante. Vérifie .env.local ou variables Vercel.');
+  console.warn('[Supabase] Missing URL or public key. Check .env.local or Vercel variables.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

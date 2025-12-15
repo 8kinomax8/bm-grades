@@ -116,7 +116,7 @@ export const calculatePromotionStatus = (semesterGrades, bmType) => {
     return { average: null, deficit: null, insufficientCount: null, isPromoted: null };
   }
 
-  // Exclure IDAF du calcul
+  // Exclude IDAF from calculation
   const gradesWithoutIDAF = Object.entries(semesterGrades)
     .filter(([subject]) => subject !== 'Interdisziplinäres Arbeiten in den Fächern');
 
@@ -124,19 +124,19 @@ export const calculatePromotionStatus = (semesterGrades, bmType) => {
     return { average: null, deficit: null, insufficientCount: null, isPromoted: null };
   }
 
-  // Moyenne générale (arrondie au dixième, pas au demi-point)
+  // Overall average (rounded to tenth, not half-point)
   const sum = gradesWithoutIDAF.reduce((acc, [, grade]) => acc + grade, 0);
   const average = roundToTenth(sum / gradesWithoutIDAF.length);
 
-  // Déficit total
+  // Total deficit
   const deficit = gradesWithoutIDAF.reduce((acc, [, grade]) => {
     return grade < 4 ? acc + (4 - grade) : acc;
   }, 0);
 
-  // Nombre de notes insuffisantes (< 4)
+  // Number of insufficient grades (< 4)
   const insufficientCount = gradesWithoutIDAF.filter(([, grade]) => grade < 4).length;
 
-  // Conditions de promotion (BM1)
+  // Promotion conditions (BM1)
   const condition1 = average >= 4.0;
   const condition2 = deficit <= 2.0;
   const condition3 = insufficientCount <= 2;

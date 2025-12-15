@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-// Service CRUD pour la table subjects
+// CRUD service for the subjects table
 
 export async function listSubjects() {
   const { data, error } = await supabase
@@ -12,7 +12,7 @@ export async function listSubjects() {
 }
 
 export async function getOrCreateSubject(name, code = null) {
-  // Chercher si la matière existe déjà pour cet utilisateur
+  // Check if the subject already exists for this user
   const { data: existing, error: searchError } = await supabase
     .from('subjects')
     .select('id, name, code')
@@ -21,12 +21,12 @@ export async function getOrCreateSubject(name, code = null) {
   
   if (searchError) throw searchError;
   
-  // Si elle existe, la retourner
+  // If it exists, return it
   if (existing) {
     return existing;
   }
   
-  // Sinon, la créer
+  // Otherwise, create it
   const { data: newSubject, error: insertError } = await supabase
     .from('subjects')
     .insert([{ name, code }])

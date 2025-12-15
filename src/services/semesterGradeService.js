@@ -1,8 +1,8 @@
 import { supabase } from './supabaseClient';
 
-// Service CRUD pour la table semester_grades
-// Colonnes: id, user_id, subject_id, semester_number, grade, created_at
-// Contrainte unique: (user_id, subject_id, semester_number)
+// CRUD service for the semester_grades table
+// Columns: id, user_id, subject_id, semester_number, grade, created_at
+// Unique constraint: (user_id, subject_id, semester_number)
 
 export async function listSemesterGrades() {
   const { data, error } = await supabase

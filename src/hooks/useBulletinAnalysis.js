@@ -38,7 +38,7 @@ export const useBulletinAnalysis = (
         return;
       }
 
-      // Traitement SAL
+      // SAL processing
       if (scanType === 'SAL' && result.controls) {
         const { updatedSubjects, addedControls } = processSALScan(
           result,
@@ -48,7 +48,7 @@ export const useBulletinAnalysis = (
         
         setSubjects(updatedSubjects);
         
-        // Enregistrer dans Supabase si callback fourni
+        // Save to Supabase if callback provided
         if (onAddControl && addedControls.length > 0) {
           for (const control of addedControls) {
             await onAddControl(
@@ -64,10 +64,10 @@ export const useBulletinAnalysis = (
         setAnalysisResult({
           semester: 'current',
           controls: addedControls,
-          message: `${addedControls.length} contrôle(s) ajouté(s)`
+          message: `${addedControls.length} assessment(s) added`
         });
       }
-      // Traitement Bulletin
+      // Bulletin processing
       else if (result.grades) {
         const { updatedSemesterGrades, mappedGrades, semester } = processBulletinScan(
           result,
@@ -78,7 +78,7 @@ export const useBulletinAnalysis = (
 
         setSemesterGrades(updatedSemesterGrades);
         
-        // Enregistrer dans Supabase si callback fourni
+        // Save to Supabase if callback provided
         if (onSaveBulletin && Object.keys(mappedGrades).length > 0) {
           for (const [subject, grade] of Object.entries(mappedGrades)) {
             await onSaveBulletin(subject, semester, grade);
@@ -91,9 +91,9 @@ export const useBulletinAnalysis = (
         });
       }
     } catch (error) {
-      console.error('Erreur analyse:', error);
+      console.error('Analysis error:', error);
       setAnalysisResult({
-        error: 'Erreur lors de l\'analyse de l\'image. Vérifiez le format.'
+        error: 'Error analyzing the image. Check the format.'
       });
     } finally {
       setIsAnalyzing(false);
@@ -104,11 +104,11 @@ export const useBulletinAnalysis = (
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Mode "Semestre Actuel" : uniquement screenshots SAL
+    // "Current Semester" mode: SAL screenshots only
     if (activeTab === 'current') {
       if (!file.type.startsWith('image/')) {
         setAnalysisResult({
-          error: 'Seuls les screenshots (JPG, PNG) sont acceptés pour le semestre actuel.'
+          error: 'Only screenshots (JPG, PNG) are accepted for the current semester.'
         });
         return;
       }
@@ -116,7 +116,7 @@ export const useBulletinAnalysis = (
       return;
     }
 
-    // Mode "Bulletins Précédents" : image ou PDF
+    // "Previous Bulletins" mode: image or PDF
     if (activeTab === 'previous') {
       if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         analyzeFile(file, 'Bulletin');

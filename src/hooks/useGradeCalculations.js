@@ -19,7 +19,7 @@ import {
  */
 export const useGradeCalculations = (subjects, semesterGrades, semesterSimulator, examSimulator, bmType) => {
   
-  // Calculs pour le semestre actuel
+  // Calculations for current semester
   const getSemesterAverage = (subject) => {
     return calculateSemesterAverage(subjects[subject]);
   };
@@ -33,14 +33,14 @@ export const useGradeCalculations = (subjects, semesterGrades, semesterSimulator
     return calculateRequiredGrade(currentGrades, targetAverage, nextWeight);
   };
 
-  // Calculs pour le simulateur de semestre
+  // Calculations for semester simulator
   const getSimulatedSemesterAverage = (subject) => {
     const currentGrades = subjects[subject] || [];
     const plannedControls = semesterSimulator[subject] || [];
     return simulateAverage(currentGrades, plannedControls);
   };
 
-  // Calculs pour les examens finaux
+  // Calculations for final exams
   const getExamAverage = (subject) => {
     const erfahrungsnote = getErfahrungsnote(subject);
     const examGrade = examSimulator[subject];
@@ -54,7 +54,7 @@ export const useGradeCalculations = (subjects, semesterGrades, semesterSimulator
     return 2 * targetAverage - erfahrungsnote;
   };
 
-  // Calcul de la moyenne générale (Gesamtnote)
+  // Calculate overall average (Gesamtnote)
   const getOverallAverage = () => {
     const subjects = Object.keys(semesterGrades);
     if (subjects.length === 0) return null;
@@ -76,7 +76,7 @@ export const useGradeCalculations = (subjects, semesterGrades, semesterSimulator
     return totalWeight > 0 ? totalWeightedSum / totalWeight : null;
   };
 
-  // Statut de promotion semestrielle
+  // Semester promotion status
   const getPromotionStatus = (simulatedGrades = null) => {
     const gradesToUse = simulatedGrades || Object.entries(semesterGrades).reduce((acc, [subject, grades]) => {
       const latestSemester = Math.max(...Object.keys(grades).map(Number));
@@ -87,14 +87,14 @@ export const useGradeCalculations = (subjects, semesterGrades, semesterSimulator
     return calculatePromotionStatus(gradesToUse, bmType);
   };
 
-  // Statut de promotion simulé
+  // Simulated promotion status
   const getSimulatedPromotionStatus = () => {
     const simulatedGrades = {};
     
     Object.keys(subjects).forEach(subject => {
       const simAvg = getSimulatedSemesterAverage(subject);
       if (simAvg) {
-        simulatedGrades[subject] = Math.round(simAvg * 2) / 2; // Arrondir au demi-point
+        simulatedGrades[subject] = Math.round(simAvg * 2) / 2; // Round to half-point
       }
     });
 
@@ -102,15 +102,15 @@ export const useGradeCalculations = (subjects, semesterGrades, semesterSimulator
   };
 
   return {
-    // Semestre actuel
+    // Current semester
     getSemesterAverage,
     getErfahrungsnote,
     getRequiredSemesterGrade,
     
-    // Simulateur
+    // Simulator
     getSimulatedSemesterAverage,
     
-    // Examens
+    // Exams
     getExamAverage,
     getRequiredExamGrade,
     getOverallAverage,
@@ -119,7 +119,7 @@ export const useGradeCalculations = (subjects, semesterGrades, semesterSimulator
     getPromotionStatus,
     getSimulatedPromotionStatus,
     
-    // Utilitaires
+    // Utilities
     parseWeight
   };
 };

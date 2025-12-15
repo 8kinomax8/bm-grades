@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
 /**
- * Composant pour afficher et gérer les notes d'une matière
+ * Component to display and manage grades for a subject
  */
 export default function GradeCard({ 
   subject, 
@@ -31,7 +31,7 @@ export default function GradeCard({
         <h3 className="font-semibold text-gray-800 text-sm">{subject}</h3>
         {semesterAverage && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-600">Moy:</span>
+            <span className="text-xs text-gray-600">Avg:</span>
             <span className={`font-bold text-lg ${
               semesterAverage >= 5.5 ? 'text-green-700' :
               semesterAverage >= 4.0 ? 'text-blue-700' :
@@ -46,7 +46,7 @@ export default function GradeCard({
       {grades.length > 0 && (
         <div className="mb-3 space-y-1">
           <div className="text-xs text-gray-600 mb-1">
-            Notes ({grades.length}) - Σ pond: {totalWeight.toFixed(2)}
+            Grades ({grades.length}) - Σ weight: {totalWeight.toFixed(2)}
           </div>
           {grades.map((g) => (
             <div
@@ -82,18 +82,18 @@ export default function GradeCard({
           'bg-blue-100 text-blue-800'
         }`}>
           {requiredGrade < 1 ? (
-            `✅ Objectif ${targetGrade} déjà atteint !`
+            `✅ Goal ${targetGrade} already achieved!`
           ) : requiredGrade > 6 ? (
-            `⚠️ Objectif ${targetGrade} impossible (requiert ${requiredGrade.toFixed(1)})`
+            `⚠️ Goal ${targetGrade} impossible (requires ${requiredGrade.toFixed(1)})`
           ) : (
-            `🎯 Note requise pour ${targetGrade}: ${requiredGrade.toFixed(1)}`
+            `🎯 Required grade for ${targetGrade}: ${requiredGrade.toFixed(1)}`
           )}
         </div>
       )}
 
       <div className="border-t border-blue-200 pt-3">
         <label className="block text-xs text-gray-700 mb-2 font-semibold">
-          Ajouter une note
+          Add a grade
         </label>
         <div className="flex gap-2">
           <input
@@ -101,14 +101,14 @@ export default function GradeCard({
             step="0.5"
             min="1"
             max="6"
-            placeholder="Note"
+            placeholder="Grade"
             value={newGrade}
             onChange={(e) => setNewGrade(e.target.value)}
             className="flex-1 p-2 border border-gray-300 rounded text-sm"
           />
           <input
             type="text"
-            placeholder="Pond."
+            placeholder="Wgt."
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
             className="w-24 p-2 border border-gray-300 rounded text-sm"

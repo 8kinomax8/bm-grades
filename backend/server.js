@@ -2,52 +2,60 @@ import express from "express";
 import cors from "cors";
 import fetch from "node-fetch";
 import "dotenv/config";
+import { testConnection } from "./db.js";
+import routes from "./routes.js";
+import { BACKEND_CONFIG, validateConfig } from "../config.js";
+
+validateConfig();
 
 const app = express();
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-  methods: ['GET', 'POST'],
+  origin: BACKEND_CONFIG.CORS_ORIGINS,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: BACKEND_CONFIG.MAX_FILE_SIZE }));
 
-// 🔒 PROMPTS FIXES
+// API routes
+app.use('/api', routes);
+
+// 🔒 FIXED PROMPTS
 const BULLETIN_PROMPT = `
-Analyse ce bulletin scolaire suisse de Berufsmaturität. Extrait UNIQUEMENT les matières et leurs notes. Réponds UNIQUEMENT avec un JSON valide, sans préambule, sans markdown, dans ce format exact:
+Analyze this Swiss Berufsmaturität school report. Extract ONLY subjects and their grades. Respond ONLY with valid JSON, no preamble, no markdown, in this exact format:
 {
-  "semester": numéro_du_semestre,
+  "semester": semester_number,
   "grades": {
-    "Nom_Matière": note_numérique,
-    "Autre_Matière": note_numérique
+    "Subject_Name": numeric_grade,
+    "Other_Subject": numeric_grade
   }
 }
 
-Matières possibles: Deutsch, Englisch, Französisch, Mathematik, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten in den Fächern.
+Possible subjects: Deutsch, Englisch, Französisch, Mathematik, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten in den Fächern.
 
-Si tu ne trouves pas d'information, retourne {"error": "description"}.
+If you don't find information, return {"error": "description"}.
 `;
 
 const SAL_PROMPT = `
-Analyse ce screenshot SAL (liste de contrôles). Extrait TOUS les contrôles avec leur matière, date et note. Réponds UNIQUEMENT avec un JSON valide, sans préambule, sans markdown, dans ce format exact:
+Analyze this SAL screenshot (list of assessments). Extract ALL assessments with their subject, date and grade. Respond ONLY with valid JSON, no preamble, no markdown, in this exact format:
 {
   "semester": "current",
   "controls": [
     {
-      "subject": "Nom_Matière_Canonique",
+      "subject": "Canonical_Subject_Name",
       "date": "YYYY-MM-DD",
-      "name": "Nom du contrôle",
-      "grade": note_numérique
+      "name": "Assessment name",
+      "grade": numeric_grade
     }
   ]
 }
 
-RÈGLES IMPORTANTES:
-- IGNORE toutes les lignes dont le nom de matière commence par un numéro (ex: "129-INP", "202-MAT")
-- Déduis la matière à partir du nom du contrôle et/ou du début du nom de matière
-- Extrait la date de chaque contrôle (format YYYY-MM-DD si possible, sinon DD.MM.YYYY)
-- N'utilise QUE ces noms de matières canoniques: Deutsch, Englisch, Französisch, Mathematik, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten in den Fächern
+IMPORTANT RULES:
+- IGNORE all lines where the subject name starts with a number (e.g.: "129-INP", "202-MAT")
+- Deduce the subject from the assessment name and/or the start of the subject name
+- Extract the date of each assessment (format YYYY-MM-DD if possible, otherwise DD.MM.YYYY)
+- Use ONLY these canonical subject names: Deutsch, Englisch, Französisch, Mathematik, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten in den Fächern
 
-CORRESPONDANCES (utilise directement le nom canonique):
+MAPPINGS (use the canonical name directly):
 - DEU/Deutsch → Deutsch
 - ENG/Englisch → Englisch
 - FRA/Französisch → Französisch
@@ -58,28 +66,28 @@ CORRESPONDANCES (utilise directement le nom canonique):
 - GE/Geschichte → Geschichte und Politik
 - IDAF/Interdisziplinär → Interdisziplinäres Arbeiten in den Fächern
 
-Si tu ne trouves pas d'information, retourne {"error": "description"}.
+If you don't find information, return {"error": "description"}.
 `;
 
 app.post("/api/scan", async (req, res) => {
-  console.log("🔵 Requête reçue sur /api/scan");
+  console.log("🔵 Request received on /api/scan");
   try {
     const { image, scanType } = req.body;
 
     if (!image) {
-      console.log("❌ Aucune image fournie");
-      return res.status(400).json({ error: "Aucune image fournie" });
+      console.log("❌ No image provided");
+      return res.status(400).json({ error: "No image provided" });
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {
-      console.log("❌ Clé API manquante");
-      return res.status(500).json({ error: "Clé API Anthropic manquante" });
+      console.log("❌ Missing API key");
+      return res.status(500).json({ error: "Missing Anthropic API key" });
     }
 
-    // Sélection du prompt selon le type de scan
+    // Select prompt based on scan type
     const prompt = scanType === 'SAL' ? SAL_PROMPT : BULLETIN_PROMPT;
-    console.log(`📸 Analyse d'image en cours (type: ${scanType || 'Bulletin'})...`);
-    console.log("🔑 Clé API:", process.env.ANTHROPIC_API_KEY.substring(0, 15) + "...");
+    console.log(`📸 Analyzing image (type: ${scanType || 'Bulletin'})...`);
+    console.log("🔑 API Key:", process.env.ANTHROPIC_API_KEY.substring(0, 15) + "...");
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -115,21 +123,29 @@ app.post("/api/scan", async (req, res) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ Erreur API Anthropic:", response.status, errorText);
-      return res.status(response.status).json({ error: `Erreur API: ${response.status}` });
+      console.error("❌ Anthropic API error:", response.status, errorText);
+      return res.status(response.status).json({ error: `API error: ${response.status}` });
     }
 
     const data = await response.json();
-    console.log("✅ Réponse reçue:", JSON.stringify(data, null, 2));
+    console.log("✅ Response received:", JSON.stringify(data, null, 2));
     res.json(data);
 
   } catch (error) {
-    console.error("❌ Erreur serveur:", error);
-    res.status(500).json({ error: "Erreur serveur: " + error.message });
+    console.error("❌ Server error:", error);
+    res.status(500).json({ error: "Server error: " + error.message });
   }
 });
 
-app.listen(3001, () => {
-  console.log("Backend API running on http://localhost:3001");
-  console.log("Clé API chargée:", process.env.ANTHROPIC_API_KEY ? `✅ (commence par ${process.env.ANTHROPIC_API_KEY.substring(0, 10)}...)` : "❌ MANQUANTE");
+app.listen(BACKEND_CONFIG.PORT, BACKEND_CONFIG.HOST, async () => {
+  console.log(`Backend API running on http://${BACKEND_CONFIG.HOST}:${BACKEND_CONFIG.PORT}`);
+  console.log("Environment:", BACKEND_CONFIG.NODE_ENV);
+  console.log("Loaded API key:", BACKEND_CONFIG.ANTHROPIC_API_KEY ? `✅ (starts with ${BACKEND_CONFIG.ANTHROPIC_API_KEY.substring(0, 10)}...)` : "❌ MISSING");
+  console.log("CORS origins:", BACKEND_CONFIG.CORS_ORIGINS);
+  
+  // Test database connection
+  const dbConnected = await testConnection();
+  if (!dbConnected) {
+    console.error("⚠️ Running without database.");
+  }
 });

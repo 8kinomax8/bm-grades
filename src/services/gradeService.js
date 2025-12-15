@@ -1,8 +1,8 @@
 import { supabase } from './supabaseClient';
 
-// Service CRUD pour la table grades
-// Colonnes attendues: id, user_id, subject_id (optionnel), semester_number, grade, weight, date, control_name, source, created_at
-// On ne passe jamais user_id directement: policies et triggers s'appuient sur auth.uid();
+// CRUD service for the grades table
+// Expected columns: id, user_id, subject_id (optional), semester_number, grade, weight, date, control_name, source, created_at
+// We never pass user_id directly: policies and triggers rely on auth.uid();
 
 export async function listGrades() {
   const { data, error } = await supabase

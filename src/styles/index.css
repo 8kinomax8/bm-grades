@@ -10,8 +10,7 @@
   body {
     min-height: 100vh;
     margin: 0;
-    background: linear-gradient(to bottom right, rgb(239, 246, 255), rgb(224, 231, 255));
-    background-attachment: fixed;
+    background-color: #f8fafc;
   }
   
   #root {

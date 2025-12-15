@@ -1,13 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 
-// Hook d'authentification: gestion de la session Supabase
+// Authentication hook: Supabase session management
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
 
-  // Récupération session initiale
+  // Fetch initial session
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data, error }) => {

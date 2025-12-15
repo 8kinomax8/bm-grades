@@ -1,18 +1,18 @@
 import { useEffect, useState, useCallback } from 'react';
 import { listGrades, addGrade, updateGrade, deleteGrade } from '../services/gradeService';
 
-// Ce hook gère la synchro des notes avec Supabase
+// This hook manages grade synchronization with Supabase
 export function useSupabaseGrades(user) {
   const [grades, setGrades] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Charger les notes à la connexion
+  // Load grades on login
   useEffect(() => {
     if (!user) return;
     setLoading(true);
     
-    // Charger les notes avec les informations de matières jointes
+    // Load grades with joined subject information
     const loadGradesWithSubjects = async () => {
       try {
         const { supabase } = await import('../services/supabaseClient');
@@ -37,7 +37,7 @@ export function useSupabaseGrades(user) {
         
         if (error) throw error;
         
-        // Formater les données pour inclure le nom de la matière
+        // Format data to include subject name
         const formattedGrades = data.map(g => ({
           ...g,
           subject_name: g.subjects?.name,
@@ -55,7 +55,7 @@ export function useSupabaseGrades(user) {
     loadGradesWithSubjects();
   }, [user]);
 
-  // Ajout
+  // Add
   const add = useCallback(async (gradeObj) => {
     setLoading(true);
     setError(null);
@@ -71,7 +71,7 @@ export function useSupabaseGrades(user) {
     }
   }, []);
 
-  // Suppression
+  // Delete
   const remove = useCallback(async (id) => {
     setLoading(true);
     setError(null);
@@ -86,7 +86,7 @@ export function useSupabaseGrades(user) {
     }
   }, []);
 
-  // Modification
+  // Update
   const update = useCallback(async (id, fields) => {
     setLoading(true);
     setError(null);
