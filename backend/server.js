@@ -19,6 +19,8 @@ app.use(express.json({ limit: BACKEND_CONFIG.MAX_FILE_SIZE }));
 // API routes
 app.use('/api', routes);
 
+app.set('trust proxy', true);
+
 // 🔒 FIXED PROMPTS
 const BULLETIN_PROMPT = `
 Analyze this Swiss Berufsmaturität school report. Extract ONLY subjects and their grades. Respond ONLY with valid JSON, no preamble, no markdown, in this exact format:

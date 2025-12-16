@@ -48,7 +48,7 @@ export const BACKEND_CONFIG = {
 export const FRONTEND_CONFIG = {
   // Backend API URL
   // Use VITE_API_URL env variable, fallback to local EC2 (change if needed)
-  API_URL: import.meta.env?.VITE_API_URL || 'http://ec2-54-90-106-3.compute-1.amazonaws.com:3001',
+  API_URL: import.meta.env?.VITE_API_URL || 'https://m346-backend.kinome.one',
 
   // AWS Cognito Configuration
   COGNITO: {
