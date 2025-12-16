@@ -52,17 +52,11 @@ export const FRONTEND_CONFIG = {
 
   // AWS Cognito Configuration
   COGNITO: {
-    authority: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_1mNOWBgO3',
-    clientId: '44o0jgjaavlkmnjc98t7bg3e26',
-    redirectUri: import.meta.env?.VITE_COGNITO_REDIRECT_URI || 'http://localhost:5173',
+    authority: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jmc1zF8iC',
+    clientId: '2mfheoj99guf7t0d3r9n3d5t1m',
+    redirectUri: import.meta.env?.VITE_COGNITO_REDIRECT_URI || 'https://main.d2xx7v3g6gelma.amplifyapp.com/',
     responseType: 'code',
     scope: 'openid email profile'
-  },
-
-  // Supabase (legacy, deprecated but kept for backward compatibility)
-  SUPABASE: {
-    url: import.meta.env?.VITE_SUPABASE_URL || '',
-    key: import.meta.env?.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || ''
   },
 
   // Application Settings
