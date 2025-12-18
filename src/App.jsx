@@ -4,6 +4,7 @@ import {LineChart, Line, BarChart as RechartsBarChart, Bar, XAxis, YAxis, Cartes
 import { BM_SUBJECTS, EXAM_SUBJECTS, LEKTIONENTAFEL } from './constants';
 import { GradeCard, SemesterSimulatorCard, BulletinAnalysis, PromotionStatus } from './components';
 import { useLoadData, useSaveData, useGradeCalculations, useBulletinAnalysis } from './hooks';
+import { useDatabase } from './hooks/useDatabase';
 import CognitoAuthPanel from './components/CognitoAuthPanel';
 import SemesterPrompt from './components/SemesterPrompt';
 import { storage } from './utils';
@@ -66,7 +67,106 @@ export default function BMGradeCalculator() {
   // ============ Custom hooks ============
   const validSubjects = new Set(Object.keys(LEKTIONENTAFEL[bmType] || {}));
   
-  // Load data on startup
+  // Database hook
+  const database = useDatabase();
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Load data from database on login
+  useEffect(() => {
+    const loadFromDatabase = async () => {
+      if (!user || dataLoaded || database.loading) return;
+      
+      try {
+        // Sync user first
+        const userData = await database.syncUser(bmType);
+        if (userData) {
+          setBmType(userData.bm_type || 'TAL');
+          setCurrentSemester(userData.current_semester || 1);
+          setMaturnoteGoal(parseFloat(userData.maturanote_goal) || 5.0);
+        }
+
+        // Load grades and convert to subjects format
+        const grades = await database.getUserGrades();
+        if (grades && grades.length > 0) {
+          const subjectsFromDb = {};
+          grades.forEach(g => {
+            if (!subjectsFromDb[g.subject_name]) {
+              subjectsFromDb[g.subject_name] = [];
+            }
+            subjectsFromDb[g.subject_name].push({
+              id: g.id,
+              grade: parseFloat(g.grade),
+              weight: parseFloat(g.weight),
+              displayWeight: g.weight.toString(),
+              date: g.control_date,
+              name: g.control_name
+            });
+          });
+          setSubjects(subjectsFromDb);
+        }
+
+        // Load semester grades
+        const semGrades = await database.getUserSemesterGrades();
+        if (semGrades && semGrades.length > 0) {
+          const semGradesFromDb = {};
+          semGrades.forEach(g => {
+            if (!semGradesFromDb[g.subject_name]) {
+              semGradesFromDb[g.subject_name] = {};
+            }
+            semGradesFromDb[g.subject_name][g.semester] = parseFloat(g.grade);
+          });
+          setSemesterGrades(semGradesFromDb);
+        }
+
+        // Load semester plans
+        const plans = await database.getUserSemesterPlans();
+        if (plans && plans.length > 0) {
+          const plansFromDb = {};
+          plans.forEach(p => {
+            if (!plansFromDb[p.subject_name]) {
+              plansFromDb[p.subject_name] = [];
+            }
+            plansFromDb[p.subject_name].push({
+              id: p.id,
+              grade: parseFloat(p.planned_grade),
+              weight: parseFloat(p.weight)
+            });
+          });
+          setSemesterPlans(plansFromDb);
+        }
+
+        // Load subject goals
+        const goals = await database.getUserSubjectGoals();
+        if (goals && goals.length > 0) {
+          const goalsFromDb = {};
+          goals.forEach(g => {
+            goalsFromDb[g.subject_name] = parseFloat(g.target_grade);
+          });
+          setSubjectGoals(goalsFromDb);
+        }
+
+        // Load exam simulator
+        const exams = await database.getUserExamGrades();
+        if (exams && exams.length > 0) {
+          const examsFromDb = {};
+          exams.forEach(e => {
+            examsFromDb[e.subject_name] = parseFloat(e.simulated_grade);
+          });
+          setExamSimulator(examsFromDb);
+        }
+
+        setDataLoaded(true);
+      } catch (err) {
+        console.error('Error loading data from database:', err);
+        // Fallback to localStorage
+        setDataLoaded(true);
+      }
+    };
+
+    loadFromDatabase();
+  }, [user, dataLoaded, database.loading]);
+
+  // Fallback: Load from localStorage if not logged in
   useLoadData({
     setSubjects,
     setSemesterGrades,
@@ -77,7 +177,7 @@ export default function BMGradeCalculator() {
     setMaturnoteGoal
   });
 
-  // Auto-save
+  // Auto-save to localStorage (backup)
   useSaveData({
     subjects,
     semesterGrades,
@@ -88,9 +188,26 @@ export default function BMGradeCalculator() {
     maturnoteGoal
   });
 
-  // Placeholder hooks for future persistence integration
-  const addControlToSupabase = async () => {};
-  const saveBulletinToSupabase = async () => {};
+  // Database persistence functions
+  const addControlToDatabase = async (subject, grade, weight, date = null, name = null) => {
+    if (user && database.userId) {
+      try {
+        await database.addGrade(subject, grade, weight, currentSemester, name, date);
+      } catch (err) {
+        console.error('Error saving grade to database:', err);
+      }
+    }
+  };
+
+  const saveBulletinToDatabase = async (subject, semester, grade) => {
+    if (user && database.userId) {
+      try {
+        await database.setSemesterGrade(subject, semester, grade);
+      } catch (err) {
+        console.error('Error saving bulletin grade to database:', err);
+      }
+    }
+  };
 
   // Bulletin analysis
   const {
@@ -105,8 +222,8 @@ export default function BMGradeCalculator() {
     setSemesterGrades,
     validSubjects,
     currentSemester,
-    addControlToSupabase,
-    saveBulletinToSupabase
+    addControlToDatabase,
+    saveBulletinToDatabase
   );
 
   // Calculations
@@ -177,7 +294,7 @@ export default function BMGradeCalculator() {
   }
 
   // ============ Management functions ============
-  const addGrade = (subject, grade, weight, date = null, name = null) => {
+  const addGrade = async (subject, grade, weight, date = null, name = null) => {
     const newGrade = {
       id: Date.now(),
       grade: parseFloat(grade),
@@ -191,16 +308,28 @@ export default function BMGradeCalculator() {
       ...prev,
       [subject]: [...(prev[subject] || []), newGrade]
     }));
+
+    // Save to database
+    await addControlToDatabase(subject, grade, weight, date, name);
   };
 
-  const removeGrade = (subject, gradeId) => {
+  const removeGrade = async (subject, gradeId) => {
     setSubjects(prev => ({
       ...prev,
       [subject]: (prev[subject] || []).filter(g => g.id !== gradeId)
     }));
+
+    // Remove from database
+    if (user && database.userId) {
+      try {
+        await database.removeGrade(gradeId);
+      } catch (err) {
+        console.error('Error removing grade from database:', err);
+      }
+    }
   };
 
-  const addPlannedControl = (subject, grade, weight) => {
+  const addPlannedControl = async (subject, grade, weight) => {
     const plan = { 
       id: Date.now(), 
       grade: parseFloat(grade), 
@@ -210,13 +339,31 @@ export default function BMGradeCalculator() {
       ...prev,
       [subject]: [...(prev[subject] || []), plan]
     }));
+
+    // Save to database
+    if (user && database.userId) {
+      try {
+        await database.addSemesterPlan(subject, currentSemester, grade, weight);
+      } catch (err) {
+        console.error('Error saving plan to database:', err);
+      }
+    }
   };
 
-  const removePlannedControl = (subject, id) => {
+  const removePlannedControl = async (subject, id) => {
     setSemesterPlans(prev => ({
       ...prev,
       [subject]: (prev[subject] || []).filter(p => p.id !== id)
     }));
+
+    // Remove from database
+    if (user && database.userId) {
+      try {
+        await database.removeSemesterPlan(id);
+      } catch (err) {
+        console.error('Error removing plan from database:', err);
+      }
+    }
   };
 
   const getSubjectsForSemester = (semester) => {
