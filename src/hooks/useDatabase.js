@@ -11,24 +11,27 @@ export function useDatabase() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const userId = auth.user?.sub;
+  // Cognito OIDC stores sub in profile
+  const userId = auth.user?.profile?.sub || auth.user?.sub;
+  const userEmail = auth.user?.profile?.email || auth.user?.email;
+  const userName = auth.user?.profile?.name || auth.user?.profile?.email?.split('@')[0];
 
   // Sync user to database
   const syncUser = useCallback(async (bmType = 'TAL') => {
-    if (!userId || !auth.user?.email) return null;
+    if (!userId || !userEmail) return null;
     
     setLoading(true);
     setError(null);
     try {
-      const displayName = auth.user?.name || auth.user?.email.split('@')[0];
-      return await db.syncUser(userId, auth.user.email, displayName, bmType);
+      const displayName = userName || userEmail.split('@')[0];
+      return await db.syncUser(userId, userEmail, displayName, bmType);
     } catch (err) {
       setError(err.message);
       console.error('Error syncing user:', err);
     } finally {
       setLoading(false);
     }
-  }, [userId, auth.user]);
+  }, [userId, userEmail, userName]);
 
   // ============================================
   // GRADES
