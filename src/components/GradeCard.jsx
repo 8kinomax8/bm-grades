@@ -33,11 +33,11 @@ export default function GradeCard({
   const totalWeight = grades.reduce((sum, g) => sum + g.weight, 0);
 
   return (
-    <div className="border-2 border-blue-200 rounded-lg p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+    <div className="border-2 border-blue-200 rounded-lg p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden max-w-full">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-800 text-sm">{subject}</h3>
+        <h3 className="font-semibold text-gray-800 text-sm truncate mr-2">{subject}</h3>
         {semesterAverage && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-xs text-gray-600">Avg:</span>
             <span className={`font-bold text-lg ${
               semesterAverage >= 5.5 ? 'text-green-700' :
@@ -51,28 +51,30 @@ export default function GradeCard({
       </div>
 
       {grades.length > 0 && (
-        <div className="mb-3 space-y-1 overflow-hidden">
+        <div className="mb-3 space-y-1">
           <div className="text-xs text-gray-600 mb-1">
             Grades ({grades.length}) - Σ weight: {totalWeight.toFixed(2)}
           </div>
-          {grades.map((g) => (
-            <div
-              key={g.id}
-              className="flex items-center text-xs bg-white rounded p-1.5 sm:p-2 border"
-            >
-              <span className="font-semibold flex-shrink-0">{g.grade.toFixed(1)}</span>
-              <span className="text-gray-400 mx-0.5">×</span>
-              <span className="text-gray-400 flex-shrink-0">{g.displayWeight || g.weight}</span>
-              {g.date && <span className="text-gray-400 ml-2 flex-shrink-0 text-xs">({g.date})</span>}
-              <span className="text-gray-700 flex-1 truncate italic text-xs ml-2 min-w-0">{g.name || ''}</span>
-              <button
-                onClick={() => onRemoveGrade(subject, g.id)}
-                className="text-red-600 hover:text-red-800 flex-shrink-0 p-0.5 ml-1"
+          <div className="overflow-x-auto -mx-1 px-1">
+            {grades.map((g) => (
+              <div
+                key={g.id}
+                className="flex items-center text-xs bg-white rounded p-1.5 sm:p-2 border mb-1 min-w-0"
               >
-                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </button>
-            </div>
-          ))}
+                <span className="font-semibold flex-shrink-0">{g.grade.toFixed(1)}</span>
+                <span className="text-gray-400 hidden sm:inline mx-0.5">×</span>
+                <span className="text-gray-400 hidden sm:inline flex-shrink-0">{g.displayWeight || g.weight}</span>
+                <span className="text-gray-400 hidden sm:inline ml-2 flex-shrink-0 text-xs">{g.date ? `(${g.date})` : ''}</span>
+                <span className="text-gray-700 flex-1 truncate italic text-xs ml-2 min-w-0">{g.name || ''}</span>
+                <button
+                  onClick={() => onRemoveGrade(subject, g.id)}
+                  className="text-red-600 hover:text-red-800 flex-shrink-0 p-0.5 ml-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
