@@ -51,23 +51,23 @@ export default function GradeCard({
       </div>
 
       {grades.length > 0 && (
-        <div className="mb-3 space-y-1">
+        <div className="mb-3 space-y-1 overflow-hidden">
           <div className="text-xs text-gray-600 mb-1">
             Grades ({grades.length}) - Σ weight: {totalWeight.toFixed(2)}
           </div>
           {grades.map((g) => (
             <div
               key={g.id}
-              className="flex items-center text-xs bg-white rounded p-1.5 sm:p-2 border gap-1"
+              className="flex items-center text-xs bg-white rounded p-1.5 sm:p-2 border"
             >
-              <span className="font-semibold w-7 sm:w-8 flex-shrink-0">{g.grade.toFixed(1)}</span>
-              <span className="text-gray-400">×</span>
-              <span className="text-gray-400 w-5 sm:w-6 flex-shrink-0">{g.displayWeight || g.weight}</span>
-              <span className="text-gray-400 w-16 sm:w-24 flex-shrink-0 ml-1 text-xs truncate">{g.date ? `(${g.date})` : ''}</span>
-              <span className="text-gray-700 flex-1 truncate italic text-xs">{g.name || ''}</span>
+              <span className="font-semibold flex-shrink-0">{g.grade.toFixed(1)}</span>
+              <span className="text-gray-400 mx-0.5">×</span>
+              <span className="text-gray-400 flex-shrink-0">{g.displayWeight || g.weight}</span>
+              {g.date && <span className="text-gray-400 ml-2 flex-shrink-0 text-xs">({g.date})</span>}
+              <span className="text-gray-700 flex-1 truncate italic text-xs ml-2 min-w-0">{g.name || ''}</span>
               <button
                 onClick={() => onRemoveGrade(subject, g.id)}
-                className="text-red-600 hover:text-red-800 flex-shrink-0 p-0.5"
+                className="text-red-600 hover:text-red-800 flex-shrink-0 p-0.5 ml-1"
               >
                 <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>

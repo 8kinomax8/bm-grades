@@ -533,14 +533,14 @@ export default function BMGradeCalculator() {
             <select
               value={activeTab}
               onChange={(e) => setActiveTab(e.target.value)}
-              className="w-full p-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl font-medium text-center appearance-none cursor-pointer shadow-lg"
+              className="w-full p-3 bg-indigo-600 text-white rounded-xl font-medium text-center appearance-none cursor-pointer shadow-lg"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '20px' }}
             >
-              <option value="current">📊 Current Semester</option>
-              <option value="semester-sim">🎯 Semester Simulator</option>
-              <option value="previous">📚 Previous Bulletins</option>
-              <option value="exam">📈 Final Exams</option>
-              <option value="charts">📉 Charts</option>
+              <option value="current" className="bg-white text-gray-800">📊 Current Semester</option>
+              <option value="semester-sim" className="bg-white text-gray-800">🎯 Semester Simulator</option>
+              <option value="previous" className="bg-white text-gray-800">📚 Previous Bulletins</option>
+              <option value="exam" className="bg-white text-gray-800">🎓 Final Exams</option>
+              <option value="charts" className="bg-white text-gray-800">📈 Charts</option>
             </select>
           </div>
 
