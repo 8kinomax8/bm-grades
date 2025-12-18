@@ -195,12 +195,16 @@ export default function BMGradeCalculator() {
 
   // Database persistence functions
   const addControlToDatabase = async (subject, grade, weight, date = null, name = null) => {
+    console.log('💾 addControlToDatabase called', { user: !!user, userId: database.userId, subject, grade, weight });
     if (user && database.userId) {
       try {
-        await database.addGrade(subject, grade, weight, currentSemester, name, date);
+        const result = await database.addGrade(subject, grade, weight, currentSemester, name, date);
+        console.log('💾 Grade saved to DB:', result);
       } catch (err) {
         console.error('Error saving grade to database:', err);
       }
+    } else {
+      console.log('💾 Skipped: no user or userId');
     }
   };
 
