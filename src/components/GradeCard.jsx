@@ -109,14 +109,14 @@ export default function GradeCard({
             onChange={(e) => setNewDate(e.target.value)}
             onFocus={(e) => e.target.type = 'date'}
             onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
-            className="w-28 p-2 border border-gray-300 rounded text-sm"
+            className="hidden sm:block w-28 p-2 border border-gray-300 rounded text-sm"
           />
           <input
             type="text"
-            placeholder="Theme (optional)"
+            placeholder="Theme"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            className="flex-1 min-w-24 p-2 border border-gray-300 rounded text-sm"
+            className="flex-1 min-w-16 p-2 border border-gray-300 rounded text-sm"
           />
           <button
             onClick={handleAdd}
