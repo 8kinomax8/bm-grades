@@ -51,22 +51,16 @@ export default function GradeCard({
           {grades.map((g) => (
             <div
               key={g.id}
-              className="flex items-center justify-between text-xs bg-white rounded p-2 border"
+              className="flex items-center text-xs bg-white rounded p-2 border gap-2"
             >
-              <div className="flex-1">
-                <span className="font-semibold">{g.grade.toFixed(1)}</span>
-                <span className="text-gray-500 mx-1">×</span>
-                <span className="text-gray-600">{g.displayWeight || g.weight}</span>
-                {g.date && (
-                  <span className="text-gray-500 ml-2">({g.date})</span>
-                )}
-                {g.name && (
-                  <span className="text-gray-700 ml-2 italic">{g.name}</span>
-                )}
-              </div>
+              <span className="font-semibold w-8 flex-shrink-0">{g.grade.toFixed(1)}</span>
+              <span className="text-gray-500">×</span>
+              <span className="text-gray-600 w-6 flex-shrink-0">{g.displayWeight || g.weight}</span>
+              <span className="text-gray-500 w-20 flex-shrink-0 text-right">{g.date ? `(${g.date})` : ''}</span>
+              <span className="text-gray-700 flex-1 truncate italic">{g.name || ''}</span>
               <button
                 onClick={() => onRemoveGrade(subject, g.id)}
-                className="text-red-600 hover:text-red-800 ml-2"
+                className="text-red-600 hover:text-red-800 flex-shrink-0"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -75,21 +69,7 @@ export default function GradeCard({
         </div>
       )}
 
-      {requiredGrade !== null && requiredGrade !== undefined && (
-        <div className={`mb-3 p-2 rounded text-xs ${
-          requiredGrade < 1 ? 'bg-green-100 text-green-800' :
-          requiredGrade > 6 ? 'bg-red-100 text-red-800' :
-          'bg-blue-100 text-blue-800'
-        }`}>
-          {requiredGrade < 1 ? (
-            `✅ Goal ${targetGrade} already achieved!`
-          ) : requiredGrade > 6 ? (
-            `⚠️ Goal ${targetGrade} impossible (requires ${requiredGrade.toFixed(1)})`
-          ) : (
-            `🎯 Required grade for ${targetGrade}: ${requiredGrade.toFixed(1)}`
-          )}
-        </div>
-      )}
+
 
       <div className="border-t border-blue-200 pt-3">
         <label className="block text-xs text-gray-700 mb-2 font-semibold">

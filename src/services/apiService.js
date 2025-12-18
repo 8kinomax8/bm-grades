@@ -124,6 +124,11 @@ export const processSALScan = (result, currentSubjects, validSubjects) => {
     const canon = normalizeSubjectName(control.subject, validSubjects);
     if (!canon) return;
     
+    // Skip controls that don't have a grade yet (only weight/Gewichtung)
+    if (control.grade === null || control.grade === undefined || control.grade === '' || isNaN(parseFloat(control.grade))) {
+      return;
+    }
+    
     // Create a unique identifier based on subject + date + grade
     const controlId = `${canon}-${control.date}-${control.grade}`;
     

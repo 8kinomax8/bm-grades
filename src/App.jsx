@@ -7,7 +7,7 @@ import { useLoadData, useSaveData, useGradeCalculations, useBulletinAnalysis } f
 import { useDatabase } from './hooks/useDatabase';
 import CognitoAuthPanel from './components/CognitoAuthPanel';
 import SemesterPrompt from './components/SemesterPrompt';
-import { storage } from './utils';
+import { storage, formatSwissDate } from './utils';
 import { useAuth as useCognitoAuth } from 'react-oidc-context';
 
 const AuthBackdrop = ({ children, contentClassName = 'w-full max-w-xl' }) => (
@@ -103,7 +103,7 @@ export default function BMGradeCalculator() {
               grade: parseFloat(g.grade),
               weight: parseFloat(g.weight),
               displayWeight: g.weight.toString(),
-              date: g.control_date,
+              date: formatSwissDate(g.control_date),
               name: g.control_name
             });
           });
@@ -549,7 +549,7 @@ export default function BMGradeCalculator() {
             )}
             <div
               ref={tabBarRef}
-              className="flex gap-2 mb-8 overflow-x-auto pb-4 scrollbar-none px-1 lg:justify-center pt-6"
+              className="flex gap-2 mb-8 overflow-x-auto pb-4 scrollbar-none px-1 lg:justify-center pt-10"
               style={{
                 WebkitOverflowScrolling: 'touch',
                 scrollSnapType: 'x mandatory',
