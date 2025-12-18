@@ -16,9 +16,6 @@ app.use(cors({
 }));
 app.use(express.json({ limit: BACKEND_CONFIG.MAX_FILE_SIZE }));
 
-// API routes
-app.use('/api', routes);
-
 app.set('trust proxy', true);
 
 // 🔒 FIXED PROMPTS
@@ -138,6 +135,9 @@ app.post("/api/scan", async (req, res) => {
     res.status(500).json({ error: "Server error: " + error.message });
   }
 });
+
+// API routes (MUST be after /api/scan so it takes priority)
+app.use('/api', routes);
 
 app.listen(BACKEND_CONFIG.PORT, BACKEND_CONFIG.HOST, async () => {
   console.log(`Backend API running on http://${BACKEND_CONFIG.HOST}:${BACKEND_CONFIG.PORT}`);

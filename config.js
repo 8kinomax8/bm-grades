@@ -33,8 +33,8 @@ export const BACKEND_CONFIG = {
     'http://127.0.0.1:5173',
     // Development/Staging/Production EC2 or custom domain
     process.env.FRONTEND_URL || 'http://localhost:5173',
-    // Amplify hosted domains (wildcard)
-    /\.amplifyapp\.com$/
+    // Amplify hosted domains (wildcard) - must be https for deployed app
+    /https:\/\/.*\.amplifyapp\.com$/
   ].filter(Boolean),
 
   // Maximum file size for uploads (10MB)
