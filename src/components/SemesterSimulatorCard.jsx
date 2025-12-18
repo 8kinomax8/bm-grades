@@ -62,8 +62,9 @@ export default function SemesterSimulatorCard({
               onChange={(e) => {
                 const value = parseFloat(e.target.value);
                 if (!isNaN(value)) {
-                  // Round to nearest 0.5
-                  const rounded = Math.round(value * 2) / 2;
+                  // Clamp between 1 and 6, then round to nearest 0.5
+                  const clamped = Math.min(6, Math.max(1, value));
+                  const rounded = Math.round(clamped * 2) / 2;
                   onGoalChange(rounded);
                 }
               }}
