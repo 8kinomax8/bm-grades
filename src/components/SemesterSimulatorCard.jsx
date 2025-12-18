@@ -171,11 +171,11 @@ export default function SemesterSimulatorCard({
 
         {simulatedAverage && (
           <div className={`text-center p-3 rounded-lg font-bold ${
-            simulatedAverage >= goalGrade
+            Math.round(simulatedAverage * 2) / 2 >= goalGrade
               ? 'bg-green-100 text-green-800'
               : 'bg-orange-100 text-orange-800'
           }`}>
-            Simulated average: {simulatedAverage.toFixed(1)}
+            Simulated average: {simulatedAverage.toFixed(2)} → {(Math.round(simulatedAverage * 2) / 2).toFixed(1)}
           </div>
         )}
       </div>
