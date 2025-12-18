@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Book, Calculator, TrendingUp, BarChart, Target } from 'lucide-react';
 import {LineChart, Line, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { BM_SUBJECTS, EXAM_SUBJECTS, LEKTIONENTAFEL } from './constants';
@@ -60,9 +60,7 @@ export default function BMGradeCalculator() {
   const [subjectGoals, setSubjectGoals] = useState({});
   const [maturnoteGoal, setMaturnoteGoal] = useState(5.0);
   const [activeTab, setActiveTab] = useState('current');
-  const [showScrollHint, setShowScrollHint] = useState(false);
   const [showSemesterPrompt, setShowSemesterPrompt] = useState(false);
-  const tabBarRef = useRef(null);
 
   // ============ Custom hooks ============
   const validSubjects = new Set(Object.keys(LEKTIONENTAFEL[bmType] || {}));
@@ -248,20 +246,6 @@ export default function BMGradeCalculator() {
   useEffect(() => {
     resetAnalysis();
   }, [activeTab, resetAnalysis]);
-
-  // Detect if tab bar overflows (requires horizontal scroll)
-  useEffect(() => {
-    const updateHint = () => {
-      if (tabBarRef.current) {
-        const el = tabBarRef.current;
-        // Small buffer for rounding differences
-        setShowScrollHint(el.scrollWidth > el.clientWidth + 4);
-      }
-    };
-    updateHint();
-    window.addEventListener('resize', updateHint);
-    return () => window.removeEventListener('resize', updateHint);
-  }, [activeTab]);
 
   // Check if semester prompt should be displayed
   useEffect(() => {
@@ -544,35 +528,27 @@ export default function BMGradeCalculator() {
 
         {/* Tabs */}
         <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100 overflow-visible">
-          <div className="relative">
-            {showScrollHint && (
-              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 z-10">
-                <div className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium animate-pulse shadow-sm">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
-                    <path d="M2 8h12M6 4l-4 4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M10 12l4-4-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Swipe to see more tabs
-                  <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
-                    <path d="M2 8h12M6 4l-4 4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M10 12l4-4-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-              </div>
-            )}
-            <div
-              ref={tabBarRef}
-              className="flex gap-2 mb-8 overflow-x-auto pb-4 scrollbar-none px-1 lg:justify-center pt-10"
-              style={{
-                WebkitOverflowScrolling: 'touch',
-                scrollSnapType: 'x mandatory',
-                overscrollBehaviorX: 'contain',
-                minWidth: 0
-              }}
+          {/* Mobile: Dropdown menu */}
+          <div className="sm:hidden mb-6">
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full p-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white rounded-xl font-medium text-center appearance-none cursor-pointer shadow-lg"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '20px' }}
             >
+              <option value="current">📊 Current Semester</option>
+              <option value="semester-sim">🎯 Semester Simulator</option>
+              <option value="previous">📚 Previous Bulletins</option>
+              <option value="exam">📈 Final Exams</option>
+              <option value="charts">📉 Charts</option>
+            </select>
+          </div>
+
+          {/* Desktop: Tab buttons */}
+          <div className="hidden sm:flex gap-2 mb-8 justify-center flex-wrap">
             <button
               onClick={() => setActiveTab('current')}
-              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
                 activeTab === 'current' 
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
@@ -584,7 +560,7 @@ export default function BMGradeCalculator() {
             
             <button
               onClick={() => setActiveTab('semester-sim')}
-              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
                 activeTab === 'semester-sim' 
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
@@ -596,7 +572,7 @@ export default function BMGradeCalculator() {
 
             <button
               onClick={() => setActiveTab('previous')}
-              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
                 activeTab === 'previous' 
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
@@ -608,7 +584,7 @@ export default function BMGradeCalculator() {
 
             <button
               onClick={() => setActiveTab('exam')}
-              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
                 activeTab === 'exam' 
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
@@ -620,7 +596,7 @@ export default function BMGradeCalculator() {
 
             <button
               onClick={() => setActiveTab('charts')}
-              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
                 activeTab === 'charts' 
                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
@@ -629,7 +605,6 @@ export default function BMGradeCalculator() {
               <BarChart className="w-4 h-4" />
               Charts
             </button>
-          </div>
           </div>
 
           {/* Semester Simulator Tab */}

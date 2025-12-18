@@ -58,18 +58,18 @@ export default function GradeCard({
           {grades.map((g) => (
             <div
               key={g.id}
-              className="flex items-center text-xs bg-white rounded p-2 border gap-1"
+              className="flex items-center text-xs bg-white rounded p-1.5 sm:p-2 border gap-1"
             >
-              <span className="font-semibold w-8 flex-shrink-0">{g.grade.toFixed(1)}</span>
+              <span className="font-semibold w-7 sm:w-8 flex-shrink-0">{g.grade.toFixed(1)}</span>
               <span className="text-gray-400">×</span>
-              <span className="text-gray-400 w-6 flex-shrink-0">{g.displayWeight || g.weight}</span>
-              <span className="text-gray-400 w-24 flex-shrink-0 ml-2">{g.date ? `(${g.date})` : ''}</span>
-              <span className="text-gray-700 flex-1 truncate italic">{g.name || ''}</span>
+              <span className="text-gray-400 w-5 sm:w-6 flex-shrink-0">{g.displayWeight || g.weight}</span>
+              <span className="text-gray-400 w-16 sm:w-24 flex-shrink-0 ml-1 text-xs truncate">{g.date ? `(${g.date})` : ''}</span>
+              <span className="text-gray-700 flex-1 truncate italic text-xs">{g.name || ''}</span>
               <button
                 onClick={() => onRemoveGrade(subject, g.id)}
-                className="text-red-600 hover:text-red-800 flex-shrink-0"
+                className="text-red-600 hover:text-red-800 flex-shrink-0 p-0.5"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             </div>
           ))}
@@ -101,11 +101,13 @@ export default function GradeCard({
             className="w-10 p-2 border border-gray-300 rounded text-sm text-center"
           />
           <input
-            type="date"
-            placeholder="Date"
+            type="text"
+            placeholder="DD.MM.YYYY"
             value={newDate}
             onChange={(e) => setNewDate(e.target.value)}
-            className="w-32 p-2 border border-gray-300 rounded text-sm"
+            onFocus={(e) => e.target.type = 'date'}
+            onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
+            className="w-28 p-2 border border-gray-300 rounded text-sm"
           />
           <input
             type="text"

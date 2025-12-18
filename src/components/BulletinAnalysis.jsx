@@ -19,14 +19,14 @@ export default function BulletinAnalysis({
             <>
               <Camera className="w-5 h-5 text-blue-600" />
               <h3 className="text-lg font-semibold text-gray-800">
-                Scan the assessment list on SAL
+                Scan SAL
               </h3>
             </>
           ) : (
             <>
               <Upload className="w-5 h-5 text-purple-600" />
               <h3 className="text-lg font-semibold text-gray-800">
-                Analyze a bulletin
+                Scan bulletin
               </h3>
             </>
           )}
@@ -35,25 +35,19 @@ export default function BulletinAnalysis({
 
       <div className="mb-4">
         <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+          <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4">
               {activeTab === 'current' ? (
                 <>
                   <Camera className="w-10 h-10 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600 md:hidden">
-                    Take a photo or choose an image (JPG, PNG)
-                  </p>
-                  <p className="text-sm text-gray-600 hidden md:block">
-                    Choose an image (JPG, PNG)
+                  <p className="text-sm text-gray-600 text-center">
+                    Photo or image (JPG, PNG)
                   </p>
                 </>
               ) : (
                 <>
                   <Upload className="w-10 h-10 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600 md:hidden">
-                    Bulletin PDF or image
-                  </p>
-                  <p className="text-sm text-gray-600 hidden md:block">
-                    Choose a bulletin (PDF or image)
+                  <p className="text-sm text-gray-600 text-center">
+                    PDF or image
                   </p>
                 </>
               )}
@@ -64,7 +58,6 @@ export default function BulletinAnalysis({
               accept={activeTab === 'current' ? 'image/*' : 'image/*,application/pdf'}
               onChange={(e) => onFileUpload(e, activeTab)}
               disabled={isAnalyzing}
-              {...(activeTab === 'current' ? { capture: 'environment' } : {})}
             />
         </label>
       </div>
