@@ -11,6 +11,10 @@ const cognitoAuthConfig = {
   redirect_uri: FRONTEND_CONFIG.COGNITO.redirectUri,
   response_type: FRONTEND_CONFIG.COGNITO.responseType,
   scope: FRONTEND_CONFIG.COGNITO.scope,
+  // Clean up URL after authentication callback
+  onSigninCallback: () => {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 }
 
 createRoot(document.getElementById('root')).render(
