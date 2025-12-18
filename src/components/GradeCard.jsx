@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { formatSwissDate } from '../utils';
 
 /**
  * Component to display and manage grades for a subject
@@ -15,12 +16,18 @@ export default function GradeCard({
 }) {
   const [newGrade, setNewGrade] = useState('');
   const [weight, setWeight] = useState('1');
+  const [newDate, setNewDate] = useState('');
+  const [newName, setNewName] = useState('');
 
   const handleAdd = () => {
     if (!newGrade || !weight) return;
-    onAddGrade(subject, parseFloat(newGrade), weight);
+    // Format date to Swiss format if provided
+    const formattedDate = newDate ? formatSwissDate(newDate) : null;
+    onAddGrade(subject, parseFloat(newGrade), weight, formattedDate, newName || null);
     setNewGrade('');
     setWeight('1');
+    setNewDate('');
+    setNewName('');
   };
 
   const totalWeight = grades.reduce((sum, g) => sum + g.weight, 0);
@@ -51,12 +58,12 @@ export default function GradeCard({
           {grades.map((g) => (
             <div
               key={g.id}
-              className="flex items-center text-xs bg-white rounded p-2 border gap-2"
+              className="flex items-center text-xs bg-white rounded p-2 border gap-1"
             >
               <span className="font-semibold w-8 flex-shrink-0">{g.grade.toFixed(1)}</span>
-              <span className="text-gray-500">×</span>
-              <span className="text-gray-600 w-6 flex-shrink-0">{g.displayWeight || g.weight}</span>
-              <span className="text-gray-500 w-20 flex-shrink-0 text-right">{g.date ? `(${g.date})` : ''}</span>
+              <span className="text-gray-400">×</span>
+              <span className="text-gray-400 w-6 flex-shrink-0">{g.displayWeight || g.weight}</span>
+              <span className="text-gray-400 w-24 flex-shrink-0 ml-2">{g.date ? `(${g.date})` : ''}</span>
               <span className="text-gray-700 flex-1 truncate italic">{g.name || ''}</span>
               <button
                 onClick={() => onRemoveGrade(subject, g.id)}
@@ -75,7 +82,7 @@ export default function GradeCard({
         <label className="block text-xs text-gray-700 mb-2 font-semibold">
           Add a grade
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             type="number"
             step="0.5"
@@ -84,14 +91,28 @@ export default function GradeCard({
             placeholder="Grade"
             value={newGrade}
             onChange={(e) => setNewGrade(e.target.value)}
-            className="flex-1 p-2 border border-gray-300 rounded text-sm"
+            className="w-16 p-2 border border-gray-300 rounded text-sm"
           />
           <input
             type="text"
             placeholder="Wgt."
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="w-24 p-2 border border-gray-300 rounded text-sm"
+            className="w-14 p-2 border border-gray-300 rounded text-sm"
+          />
+          <input
+            type="date"
+            placeholder="Date"
+            value={newDate}
+            onChange={(e) => setNewDate(e.target.value)}
+            className="w-32 p-2 border border-gray-300 rounded text-sm"
+          />
+          <input
+            type="text"
+            placeholder="Theme (optional)"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="flex-1 min-w-24 p-2 border border-gray-300 rounded text-sm"
           />
           <button
             onClick={handleAdd}

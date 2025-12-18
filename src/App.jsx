@@ -304,6 +304,19 @@ export default function BMGradeCalculator() {
 
   // ============ Management functions ============
   const addGrade = async (subject, grade, weight, date = null, name = null) => {
+    // Check for duplicates: same subject, grade, date, and name
+    const existingGrades = subjects[subject] || [];
+    const isDuplicate = existingGrades.some(g => 
+      Math.abs(g.grade - parseFloat(grade)) < 0.01 &&
+      g.date === date &&
+      g.name === name
+    );
+    
+    if (isDuplicate) {
+      console.log('⚠️ Duplicate grade detected, skipping:', { subject, grade, date, name });
+      return;
+    }
+    
     const newGrade = {
       id: Date.now(),
       grade: parseFloat(grade),
