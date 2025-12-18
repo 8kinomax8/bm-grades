@@ -84,9 +84,33 @@ export async function updateUserMaturanoteGoal(userId, goal) {
 // GRADES
 // ============================================
 
+// Helper function to get internal user ID from cognito_sub or id
+async function resolveUserId(connection, userIdOrSub) {
+  // First try to find by id (UUID format)
+  let [users] = await connection.query(
+    'SELECT id FROM users WHERE id = ?',
+    [userIdOrSub]
+  );
+  
+  if (users.length) return users[0].id;
+  
+  // Otherwise try to find by cognito_sub
+  [users] = await connection.query(
+    'SELECT id FROM users WHERE cognito_sub = ?',
+    [userIdOrSub]
+  );
+  
+  if (users.length) return users[0].id;
+  
+  throw new Error(`User not found: ${userIdOrSub}`);
+}
+
 export async function addGrade(userId, subjectName, grade, weight, semester, controlName = null, controlDate = null, source = 'manual') {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     // Get subject ID
     const [subjects] = await connection.query(
       'SELECT id FROM subjects WHERE name = ?',
@@ -102,10 +126,10 @@ export async function addGrade(userId, subjectName, grade, weight, semester, con
     const [result] = await connection.query(
       `INSERT INTO grades (user_id, subject_id, semester_number, grade, weight, control_name, control_date, source)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userId, subjectId, semester, grade, weight, controlName, controlDate, source]
+      [internalUserId, subjectId, semester, grade, weight, controlName, controlDate, source]
     );
     
-    return { id: result.insertId, userId, subjectId, semester, grade, weight };
+    return { id: result.insertId, userId: internalUserId, subjectId, semester, grade, weight };
   } finally {
     connection.release();
   }
@@ -126,6 +150,9 @@ export async function removeGrade(gradeId) {
 export async function getUserGrades(userId, semester = null, subjectName = null) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     let query = `
       SELECT g.id, g.user_id, g.subject_id, s.name AS subject_name, 
              g.semester_number, g.grade, g.weight, g.control_name, 
@@ -135,7 +162,7 @@ export async function getUserGrades(userId, semester = null, subjectName = null)
       WHERE g.user_id = ?
     `;
     
-    const params = [userId];
+    const params = [internalUserId];
     
     if (semester !== null) {
       query += ' AND g.semester_number = ?';
@@ -163,6 +190,9 @@ export async function getUserGrades(userId, semester = null, subjectName = null)
 export async function setSemesterGrade(userId, subjectName, semester, grade, isUserSet = false) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [subjects] = await connection.query(
       'SELECT id FROM subjects WHERE name = ?',
       [subjectName]
@@ -182,10 +212,10 @@ export async function setSemesterGrade(userId, subjectName, semester, grade, isU
          source = VALUES(source),
          is_final = VALUES(is_final),
          updated_at = NOW()`,
-      [userId, subjectId, semester, grade, isUserSet ? 'manual' : 'calculated', isUserSet]
+      [internalUserId, subjectId, semester, grade, isUserSet ? 'manual' : 'calculated', isUserSet]
     );
     
-    return { userId, subjectId, semester, grade };
+    return { userId: internalUserId, subjectId, semester, grade };
   } finally {
     connection.release();
   }
@@ -194,6 +224,9 @@ export async function setSemesterGrade(userId, subjectName, semester, grade, isU
 export async function getUserSemesterGrades(userId, semester = null) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     let query = `
       SELECT sg.id, sg.user_id, sg.subject_id, s.name AS subject_name,
              sg.semester_number, sg.grade, sg.is_final, sg.source
@@ -202,7 +235,7 @@ export async function getUserSemesterGrades(userId, semester = null) {
       WHERE sg.user_id = ?
     `;
     
-    const params = [userId];
+    const params = [internalUserId];
     
     if (semester !== null) {
       query += ' AND sg.semester_number = ?';
@@ -225,6 +258,9 @@ export async function getUserSemesterGrades(userId, semester = null) {
 export async function addSemesterPlan(userId, subjectName, semester, plannedGrade, weight, description = null) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [subjects] = await connection.query(
       'SELECT id FROM subjects WHERE name = ?',
       [subjectName]
@@ -239,10 +275,10 @@ export async function addSemesterPlan(userId, subjectName, semester, plannedGrad
     const [result] = await connection.query(
       `INSERT INTO semester_plans (user_id, subject_id, semester_number, planned_grade, weight, description)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, subjectId, semester, plannedGrade, weight, description]
+      [internalUserId, subjectId, semester, plannedGrade, weight, description]
     );
     
-    return { id: result.insertId, userId, subjectId, semester, plannedGrade, weight };
+    return { id: result.insertId, userId: internalUserId, subjectId, semester, plannedGrade, weight };
   } finally {
     connection.release();
   }
@@ -263,6 +299,9 @@ export async function removeSemesterPlan(planId) {
 export async function getUserSemesterPlans(userId, semester = null) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     let query = `
       SELECT sp.id, sp.user_id, sp.subject_id, s.name AS subject_name,
              sp.semester_number, sp.planned_grade, sp.weight, sp.description
@@ -271,7 +310,7 @@ export async function getUserSemesterPlans(userId, semester = null) {
       WHERE sp.user_id = ?
     `;
     
-    const params = [userId];
+    const params = [internalUserId];
     
     if (semester !== null) {
       query += ' AND sp.semester_number = ?';
@@ -294,6 +333,9 @@ export async function getUserSemesterPlans(userId, semester = null) {
 export async function setSubjectGoal(userId, subjectName, targetGrade) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [subjects] = await connection.query(
       'SELECT id FROM subjects WHERE name = ?',
       [subjectName]
@@ -311,10 +353,10 @@ export async function setSubjectGoal(userId, subjectName, targetGrade) {
        ON DUPLICATE KEY UPDATE 
          target_grade = VALUES(target_grade),
          updated_at = NOW()`,
-      [userId, subjectId, targetGrade]
+      [internalUserId, subjectId, targetGrade]
     );
     
-    return { userId, subjectId, targetGrade };
+    return { userId: internalUserId, subjectId, targetGrade };
   } finally {
     connection.release();
   }
@@ -323,6 +365,9 @@ export async function setSubjectGoal(userId, subjectName, targetGrade) {
 export async function removeSubjectGoal(userId, subjectName) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [subjects] = await connection.query(
       'SELECT id FROM subjects WHERE name = ?',
       [subjectName]
@@ -334,7 +379,7 @@ export async function removeSubjectGoal(userId, subjectName) {
     
     await connection.query(
       'DELETE FROM subject_goals WHERE user_id = ? AND subject_id = ?',
-      [userId, subjectId]
+      [internalUserId, subjectId]
     );
   } finally {
     connection.release();
@@ -344,13 +389,16 @@ export async function removeSubjectGoal(userId, subjectName) {
 export async function getUserSubjectGoals(userId) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [rows] = await connection.query(
       `SELECT sg.id, sg.user_id, sg.subject_id, s.name AS subject_name, sg.target_grade
        FROM subject_goals sg
        JOIN subjects s ON sg.subject_id = s.id
        WHERE sg.user_id = ?
        ORDER BY s.name`,
-      [userId]
+      [internalUserId]
     );
     return rows;
   } finally {
@@ -365,6 +413,9 @@ export async function getUserSubjectGoals(userId) {
 export async function setExamGrade(userId, subjectName, simulatedGrade) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [subjects] = await connection.query(
       'SELECT id FROM subjects WHERE name = ?',
       [subjectName]
@@ -382,10 +433,10 @@ export async function setExamGrade(userId, subjectName, simulatedGrade) {
        ON DUPLICATE KEY UPDATE 
          simulated_grade = VALUES(simulated_grade),
          updated_at = NOW()`,
-      [userId, subjectId, simulatedGrade]
+      [internalUserId, subjectId, simulatedGrade]
     );
     
-    return { userId, subjectId, simulatedGrade };
+    return { userId: internalUserId, subjectId, simulatedGrade };
   } finally {
     connection.release();
   }
@@ -394,6 +445,9 @@ export async function setExamGrade(userId, subjectName, simulatedGrade) {
 export async function removeExamGrade(userId, subjectName) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [subjects] = await connection.query(
       'SELECT id FROM subjects WHERE name = ?',
       [subjectName]
@@ -405,7 +459,7 @@ export async function removeExamGrade(userId, subjectName) {
     
     await connection.query(
       'DELETE FROM exam_simulator WHERE user_id = ? AND subject_id = ?',
-      [userId, subjectId]
+      [internalUserId, subjectId]
     );
   } finally {
     connection.release();
@@ -415,13 +469,16 @@ export async function removeExamGrade(userId, subjectName) {
 export async function getUserExamGrades(userId) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     const [rows] = await connection.query(
       `SELECT es.id, es.user_id, es.subject_id, s.name AS subject_name, es.simulated_grade
        FROM exam_simulator es
        JOIN subjects s ON es.subject_id = s.id
        WHERE es.user_id = ?
        ORDER BY s.name`,
-      [userId]
+      [internalUserId]
     );
     return rows;
   } finally {
