@@ -91,14 +91,14 @@ export default function GradeCard({
             placeholder="Grade"
             value={newGrade}
             onChange={(e) => setNewGrade(e.target.value)}
-            className="w-16 p-2 border border-gray-300 rounded text-sm"
+            className="w-20 p-2 border border-gray-300 rounded text-sm"
           />
           <input
             type="text"
-            placeholder="Wgt."
+            placeholder="×"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            className="w-14 p-2 border border-gray-300 rounded text-sm"
+            className="w-10 p-2 border border-gray-300 rounded text-sm text-center"
           />
           <input
             type="date"
