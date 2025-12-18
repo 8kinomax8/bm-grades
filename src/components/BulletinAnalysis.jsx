@@ -1,5 +1,6 @@
 import React from 'react';
 import { Upload, Camera } from 'lucide-react';
+import { formatSwissDate } from '../utils';
 
 /**
  * Component to display the result of analyzing a bulletin or SAL screenshot
@@ -98,15 +99,15 @@ export default function BulletinAnalysis({
                         </div>
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-gray-700 truncate flex-1 mr-2">{control.name}</span>
-                          <span className="text-gray-500 whitespace-nowrap">{control.date}</span>
+                          <span className="text-gray-500 whitespace-nowrap">{formatSwissDate(control.date)}</span>
                         </div>
                       </div>
                       {/* Desktop: 1 ligne */}
                       <div className="hidden md:flex items-center justify-between">
-                        <span className="font-medium text-green-800 w-1/4">{control.subject}</span>
-                        <span className="text-gray-700 flex-1 px-2 truncate">{control.name}</span>
-                        <span className="font-bold text-green-700 w-16 text-right">{control.grade}</span>
-                        <span className="text-gray-500 text-xs w-24 text-right">{control.date}</span>
+                        <span className="font-medium text-green-800 w-48 flex-shrink-0">{control.subject}</span>
+                        <span className="text-gray-700 flex-1 px-4 text-left">{control.name}</span>
+                        <span className="font-bold text-green-700 w-16 text-right flex-shrink-0">{control.grade}</span>
+                        <span className="text-gray-500 text-xs w-24 text-right flex-shrink-0">{formatSwissDate(control.date)}</span>
                       </div>
                     </div>
                   ))}
