@@ -859,11 +859,7 @@ export default function BMGradeCalculator() {
           {activeTab === 'charts' && (
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Charts and Statistics</h2>
-              {getSubjectProgressData().length === 0 && getChartData().length === 0 && (
-                <div className="bg-white p-6 rounded-lg shadow text-center text-gray-500">
-                  Aucune donnée à afficher pour les statistiques. Ajoutez des notes ou importez des bulletins.
-                </div>
-              )}
+              
               {getSubjectProgressData().length > 0 && (
                 <div className="mb-8 bg-white p-6 rounded-lg shadow">
                   <h3 className="text-xl font-semibold mb-4">Evolution by Semester</h3>
@@ -890,6 +886,7 @@ export default function BMGradeCalculator() {
                   </ResponsiveContainer>
                 </div>
               )}
+
               {getChartData().length > 0 && (
                 <div className="bg-white p-6 rounded-lg shadow">
                   <h3 className="text-xl font-semibold mb-4">Comparison Erfahrungsnote vs Maturnote</h3>
