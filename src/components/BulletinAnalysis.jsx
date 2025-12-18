@@ -62,40 +62,44 @@ export default function BulletinAnalysis({
         </label>
       </div>
 
-      {isAnalyzing && (
-        <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
-          <span className="text-blue-600">Analysis in progress...</span>
-        </div>
-      )}
-
       {analysisResult && (
         <div className="mt-4">
           {analysisResult.error ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
-              <strong>Error:</strong> {analysisResult.error}
+              <strong>Erreur :</strong> {analysisResult.error}
             </div>
           ) : analysisResult.controls ? (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="font-semibold text-green-800 mb-2">
-                ✅ {analysisResult.message}
+                ✅ Bulletin S{analysisResult.semester} analysé
               </div>
-              {analysisResult.controls.length > 0 && (
-                <div className="space-y-2 text-sm text-green-700">
-                  {analysisResult.controls.map((control, idx) => (
-                    <div key={idx} className="bg-white rounded p-2">
-                      {/* Mobile: 2 lignes */}
-                      <div className="md:hidden">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-semibold text-green-800 text-xs">{control.subject}</span>
-                          <span className="font-bold text-green-700 text-lg">{control.grade}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-700 truncate flex-1 mr-2">{control.name}</span>
-                          <span className="text-gray-500 whitespace-nowrap">{formatSwissDate(control.date)}</span>
-                        </div>
-                      </div>
-                      {/* Desktop: 1 ligne */}
+              <ul className="list-disc pl-5 text-green-900">
+                {analysisResult.controls.length === 0 ? (
+                  <li>Aucun contrôle ajouté (aucune note trouvée ou déjà existante).</li>
+                ) : analysisResult.controls.map((c, i) => (
+                  <li key={i}>{c.subject} : {c.grade} ({c.date})</li>
+                ))}
+              </ul>
+              {analysisResult.message && (
+                <div className="mt-2 text-green-700 text-sm">{analysisResult.message}</div>
+              )}
+            </div>
+          ) : analysisResult.grades ? (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="font-semibold text-green-800 mb-2">
+                ✅ Bulletin S{analysisResult.semester} enregistré
+              </div>
+              <ul className="list-disc pl-5 text-green-900">
+                {Object.keys(analysisResult.grades).length === 0 ? (
+                  <li>Aucune note trouvée ou ajoutée.</li>
+                ) : Object.entries(analysisResult.grades).map(([subject, grade], i) => (
+                  <li key={i}>{subject} : {grade}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      )}
                       <div className="hidden md:flex items-center justify-between">
                         <span className="font-medium text-green-800 w-48 flex-shrink-0">{control.subject}</span>
                         <span className="text-gray-700 flex-1 px-4 text-left">{control.name}</span>
