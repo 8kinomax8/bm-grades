@@ -74,11 +74,14 @@ export default function BMGradeCalculator() {
   // Load data from database on login
   useEffect(() => {
     const loadFromDatabase = async () => {
+      console.log('🔍 loadFromDatabase called', { user: !!user, dataLoaded, loading: database.loading, userId: database.userId });
       if (!user || dataLoaded || database.loading) return;
       
       try {
         // Sync user first
+        console.log('🔄 Syncing user...');
         const userData = await database.syncUser(bmType);
+        console.log('✅ User synced:', userData);
         if (userData) {
           setBmType(userData.bm_type || 'TAL');
           setCurrentSemester(userData.current_semester || 1);
@@ -86,7 +89,9 @@ export default function BMGradeCalculator() {
         }
 
         // Load grades and convert to subjects format
+        console.log('📚 Loading grades...');
         const grades = await database.getUserGrades();
+        console.log('📚 Grades loaded:', grades);
         if (grades && grades.length > 0) {
           const subjectsFromDb = {};
           grades.forEach(g => {
