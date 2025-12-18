@@ -37,8 +37,8 @@ export const BACKEND_CONFIG = {
     /https:\/\/.*\.amplifyapp\.com$/
   ].filter(Boolean),
 
-  // Maximum file size for uploads (10MB)
-  MAX_FILE_SIZE: '10mb'
+  // Maximum file size for uploads (30MB)
+  MAX_FILE_SIZE: '30mb'
 };
 
 // ============================================
