@@ -11,7 +11,7 @@ import { storage } from './utils';
 import { useAuth as useCognitoAuth } from 'react-oidc-context';
 
 const AuthBackdrop = ({ children, contentClassName = 'w-full max-w-xl' }) => (
-  <div className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-[#eef2ff] via-[#fdfbff] to-[#e5e4ff] overflow-hidden">
+  <div className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-[#eef2ff] via-[#fdfbff] to-[#e5e4ff] overflow-x-hidden">
     <div className="pointer-events-none absolute inset-0">
       <div className="absolute -top-12 -right-6 h-64 w-64 rounded-full bg-indigo-200/50 blur-3xl" />
       <div className="absolute -bottom-16 -left-10 h-72 w-72 rounded-full bg-purple-200/40 blur-3xl" />
@@ -494,7 +494,13 @@ export default function BMGradeCalculator() {
               <label className="block text-sm font-medium text-gray-700 mb-2">BM Type</label>
               <select 
                 value={bmType} 
-                onChange={(e) => setBmType(e.target.value)}
+                onChange={(e) => {
+                  const newBmType = e.target.value;
+                  setBmType(newBmType);
+                  if (user && database.userId) {
+                    database.updateBmType(newBmType);
+                  }
+                }}
                 className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition-all"
               >
                 <option value="TAL">TAL - Technique, Architecture, Life Sciences</option>
@@ -509,7 +515,14 @@ export default function BMGradeCalculator() {
                 min="1" 
                 max="8"
                 value={currentSemester}
-                onChange={(e) => setCurrentSemester(parseInt(e.target.value))}
+                onChange={(e) => {
+                  const newSemester = parseInt(e.target.value);
+                  setCurrentSemester(newSemester);
+                  // Sync to database
+                  if (user && database.userId) {
+                    database.updateSemester(newSemester);
+                  }
+                }}
                 className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition-all"
               />
             </div>
@@ -517,7 +530,7 @@ export default function BMGradeCalculator() {
         </header>
 
         {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100 overflow-visible">
           <div className="relative">
             {showScrollHint && (
               <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 z-10">
@@ -536,7 +549,7 @@ export default function BMGradeCalculator() {
             )}
             <div
               ref={tabBarRef}
-              className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none px-1 lg:justify-center pt-6"
+              className="flex gap-2 mb-8 overflow-x-auto pb-4 scrollbar-none px-1 lg:justify-center pt-6"
               style={{
                 WebkitOverflowScrolling: 'touch',
                 scrollSnapType: 'x mandatory',

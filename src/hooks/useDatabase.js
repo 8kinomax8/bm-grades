@@ -33,6 +33,28 @@ export function useDatabase() {
     }
   }, [userId, userEmail, userName]);
 
+  // Update user semester
+  const updateSemester = useCallback(async (semester) => {
+    if (!userId) return null;
+    
+    try {
+      return await db.updateUserSemester(userId, semester);
+    } catch (err) {
+      console.error('Error updating semester:', err);
+    }
+  }, [userId]);
+
+  // Update user BM type
+  const updateBmType = useCallback(async (bmType) => {
+    if (!userId) return null;
+    
+    try {
+      return await db.updateUserBmType(userId, bmType);
+    } catch (err) {
+      console.error('Error updating BM type:', err);
+    }
+  }, [userId]);
+
   // ============================================
   // GRADES
   // ============================================
@@ -273,6 +295,8 @@ export function useDatabase() {
     error,
     userId,
     syncUser,
+    updateSemester,
+    updateBmType,
     addGrade,
     removeGrade,
     getUserGrades,

@@ -44,11 +44,14 @@ export async function getUserById(userId) {
 export async function updateUserBmType(userId, bmType) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     await connection.query(
       'UPDATE users SET bm_type = ? WHERE id = ?',
-      [bmType, userId]
+      [bmType, internalUserId]
     );
-    return getUserById(userId);
+    return getUserById(internalUserId);
   } finally {
     connection.release();
   }
@@ -57,11 +60,14 @@ export async function updateUserBmType(userId, bmType) {
 export async function updateUserCurrentSemester(userId, semester) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     await connection.query(
       'UPDATE users SET current_semester = ? WHERE id = ?',
-      [semester, userId]
+      [semester, internalUserId]
     );
-    return getUserById(userId);
+    return getUserById(internalUserId);
   } finally {
     connection.release();
   }
@@ -70,11 +76,14 @@ export async function updateUserCurrentSemester(userId, semester) {
 export async function updateUserMaturanoteGoal(userId, goal) {
   const connection = await pool.getConnection();
   try {
+    // Resolve cognito_sub to internal user_id
+    const internalUserId = await resolveUserId(connection, userId);
+    
     await connection.query(
       'UPDATE users SET maturanote_goal = ? WHERE id = ?',
-      [goal, userId]
+      [goal, internalUserId]
     );
-    return getUserById(userId);
+    return getUserById(internalUserId);
   } finally {
     connection.release();
   }
