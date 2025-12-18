@@ -470,22 +470,32 @@ export default function BMGradeCalculator() {
 
   // ============ Render ============
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f8f9ff] via-white to-[#eef2ff] py-10 px-3">
+    <div className="min-h-screen bg-gradient-to-b from-[#f8f9ff] via-white to-[#eef2ff] py-6 sm:py-10 px-3">
       <div className="max-w-7xl mx-auto px-2 sm:px-4">
         {/* Header */}
-        <header className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <h1 className="text-3xl font-bold text-indigo-900 mb-4 flex items-center gap-3">
-            <Book className="w-8 h-8" />
-            BM Grade Calculator
-          </h1>
+        <header className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-6 border border-gray-100">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-indigo-900 flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl text-white">
+                <Book className="w-6 h-6 sm:w-7 sm:h-7" />
+              </div>
+              BM Grade Calculator
+            </h1>
+            {user && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                {database.userId ? 'Synced' : 'Local'}
+              </div>
+            )}
+          </div>
           
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">BM Type</label>
               <select 
                 value={bmType} 
                 onChange={(e) => setBmType(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition-all"
               >
                 <option value="TAL">TAL - Technique, Architecture, Life Sciences</option>
                 <option value="DL">DL - Dienstleistung</option>
@@ -500,81 +510,100 @@ export default function BMGradeCalculator() {
                 max="8"
                 value={currentSemester}
                 onChange={(e) => setCurrentSemester(parseInt(e.target.value))}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 transition-all"
               />
             </div>
           </div>
         </header>
 
         {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-xl p-6">
-          {showScrollHint && (
-            <div className="text-center text-xs text-gray-500 mb-2 select-none">
-              <span className="inline-flex items-center gap-1">
-                <svg width="16" height="16" fill="none" viewBox="0 0 16 16" className="inline"><path d="M2 8h12M6 4l-4 4 4 4" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 12l4-4-4-4" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Scroll to see other tabs
-              </span>
-            </div>
-          )}
-          <div
-            ref={tabBarRef}
-            className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none pl-2 pr-2 lg:justify-center"
-            style={{
-              WebkitOverflowScrolling: 'touch',
-              scrollSnapType: 'x mandatory',
-              overscrollBehaviorX: 'contain',
-              minWidth: 0
-            }}
-          >
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-100">
+          <div className="relative">
+            {showScrollHint && (
+              <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 z-10">
+                <div className="flex items-center gap-2 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium animate-pulse shadow-sm">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
+                    <path d="M2 8h12M6 4l-4 4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M10 12l4-4-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Swipe to see more tabs
+                  <svg width="16" height="16" fill="none" viewBox="0 0 16 16">
+                    <path d="M2 8h12M6 4l-4 4 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M10 12l4-4-4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </div>
+            )}
+            <div
+              ref={tabBarRef}
+              className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none px-1 lg:justify-center pt-6"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                scrollSnapType: 'x mandatory',
+                overscrollBehaviorX: 'contain',
+                minWidth: 0
+              }}
+            >
             <button
               onClick={() => setActiveTab('current')}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-                activeTab === 'current' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+                activeTab === 'current' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
               }`}
             >
-              <Calculator className="w-4 h-4 inline mr-2" />
+              <Calculator className="w-4 h-4" />
               Current Semester
             </button>
             
             <button
               onClick={() => setActiveTab('semester-sim')}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-                activeTab === 'semester-sim' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+                activeTab === 'semester-sim' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
               }`}
             >
-              <Target className="w-4 h-4 inline mr-2" />
+              <Target className="w-4 h-4" />
               Semester Simulator
             </button>
 
             <button
               onClick={() => setActiveTab('previous')}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-                activeTab === 'previous' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+                activeTab === 'previous' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
               }`}
             >
-              <Book className="w-4 h-4 inline mr-2" />
+              <Book className="w-4 h-4" />
               Previous Bulletins
             </button>
 
             <button
               onClick={() => setActiveTab('exam')}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-                activeTab === 'exam' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+                activeTab === 'exam' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
               }`}
             >
-              <TrendingUp className="w-4 h-4 inline mr-2" />
+              <TrendingUp className="w-4 h-4" />
               Final Exams
             </button>
 
             <button
               onClick={() => setActiveTab('charts')}
-              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-                activeTab === 'charts' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'
+              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 scroll-snap-align-start ${
+                activeTab === 'charts' 
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
               }`}
             >
-              <BarChart className="w-4 h-4 inline mr-2" />
+              <BarChart className="w-4 h-4" />
               Charts
             </button>
+          </div>
           </div>
 
           {/* Semester Simulator Tab */}
