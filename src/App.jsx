@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Calculator, TrendingUp, BarChart, Target } from 'lucide-react';
-import {LineChart, Line, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Book, Calculator, TrendingUp, Target } from 'lucide-react';
 import { BM_SUBJECTS, EXAM_SUBJECTS, LEKTIONENTAFEL } from './constants';
 import { GradeCard, SemesterSimulatorCard, BulletinAnalysis, PromotionStatus } from './components';
 import { useLoadData, useSaveData, useGradeCalculations, useBulletinAnalysis } from './hooks';
@@ -403,60 +402,6 @@ export default function BMGradeCalculator() {
     return Math.round(required * 10) / 10;
   };
 
-  // ============ Data for charts ============
-  const getChartData = () => {
-    const allSubjects = [
-      ...BM_SUBJECTS[bmType].grundlagen,
-      ...BM_SUBJECTS[bmType].schwerpunkt,
-      ...BM_SUBJECTS[bmType].erganzung,
-      ...BM_SUBJECTS[bmType].interdisziplinar
-    ];
-    
-    return allSubjects.map(subject => {
-      const erfahrungsnote = calculations.getErfahrungsnote(subject);
-      // const exam = examSimulator[subject];
-      const maturnote = EXAM_SUBJECTS[bmType].includes(subject) 
-        ? calculations.getExamAverage(subject)
-        : erfahrungsnote;
-
-      return {
-        name: subject.length > 15 ? subject.substring(0, 15) + '...' : subject,
-        fullName: subject,
-        Erfahrungsnote: erfahrungsnote || 0,
-        Maturnote: maturnote || 0
-      };
-    }).filter(d => d.Erfahrungsnote > 0 || d.Maturnote > 0);
-  };
-
-  const getSubjectProgressData = () => {
-    const allSubjects = [
-      ...BM_SUBJECTS[bmType].grundlagen,
-      ...BM_SUBJECTS[bmType].schwerpunkt,
-      ...BM_SUBJECTS[bmType].erganzung,
-      ...BM_SUBJECTS[bmType].interdisziplinar
-    ];
-    const maxSemester = Math.max(...Object.values(semesterGrades).flatMap(s => Object.keys(s).map(Number)), 0);
-    
-    if (maxSemester === 0) return [];
-    
-    const data = [];
-    for (let sem = 1; sem <= maxSemester; sem++) {
-      const semesterData = { semester: `S${sem}` };
-      
-      allSubjects.forEach(subject => {
-        const grade = semesterGrades[subject]?.[sem];
-        if (grade) {
-          const shortName = subject.length > 20 ? subject.substring(0, 18) + '...' : subject;
-          semesterData[shortName] = grade;
-        }
-      });
-      
-      data.push(semesterData);
-    }
-    
-    return data;
-  };
-
   const allSubjects = [
     ...BM_SUBJECTS[bmType].grundlagen,
     ...BM_SUBJECTS[bmType].schwerpunkt,
@@ -540,7 +485,6 @@ export default function BMGradeCalculator() {
               <option value="semester-sim" className="bg-white text-gray-800">🎯 Semester Simulator</option>
               <option value="previous" className="bg-white text-gray-800">📚 Previous Bulletins</option>
               <option value="exam" className="bg-white text-gray-800">🎓 Final Exams</option>
-              <option value="charts" className="bg-white text-gray-800">📈 Charts</option>
             </select>
           </div>
 
@@ -592,18 +536,6 @@ export default function BMGradeCalculator() {
             >
               <TrendingUp className="w-4 h-4" />
               Final Exams
-            </button>
-
-            <button
-              onClick={() => setActiveTab('charts')}
-              className={`px-4 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-2 ${
-                activeTab === 'charts' 
-                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-200' 
-                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow-md border border-gray-200'
-              }`}
-            >
-              <BarChart className="w-4 h-4" />
-              Charts
             </button>
           </div>
 
@@ -852,71 +784,6 @@ export default function BMGradeCalculator() {
                   );
                 })}
               </div>
-            </div>
-          )}
-
-          {/* Charts Tab */}
-          {activeTab === 'charts' && (
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Charts and Statistics</h2>
-              
-              {getSubjectProgressData().length > 0 && (
-                <div className="mb-8 bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-xl font-semibold mb-4">Evolution by Semester</h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={getSubjectProgressData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="semester" />
-                      <YAxis domain={[1, 6]} />
-                      <Tooltip />
-                      <Legend />
-                      {Object.keys(getSubjectProgressData()[0] || {})
-                        .filter(key => key !== 'semester')
-                        .map((subject, idx) => (
-                          <Line 
-                            key={subject}
-                            type="monotone" 
-                            dataKey={subject} 
-                            stroke={`hsl(${idx * 360 / 10}, 70%, 50%)`}
-                            strokeWidth={2}
-                          />
-                        ))
-                      }
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              {getChartData().length > 0 && (
-                <div className="bg-white p-6 rounded-lg shadow">
-                  <h3 className="text-xl font-semibold mb-4">Comparison Erfahrungsnote vs Maturnote</h3>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <RechartsBarChart data={getChartData()}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis domain={[0, 6]} />
-                      <Tooltip content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-white p-2 border rounded shadow">
-                              <p className="font-semibold">{payload[0].payload.fullName}</p>
-                              {payload.map((entry, index) => (
-                                <p key={index} style={{ color: entry.color }}>
-                                  {entry.name}: {entry.value.toFixed(1)}
-                                </p>
-                              ))}
-                            </div>
-                          );
-                        }
-                        return null;
-                      }} />
-                      <Legend />
-                      <Bar dataKey="Erfahrungsnote" fill="#8884d8" />
-                      <Bar dataKey="Maturnote" fill="#82ca9d" />
-                    </RechartsBarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
             </div>
           )}
         </div>
