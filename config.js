@@ -31,7 +31,9 @@ export const BACKEND_CONFIG = {
   CORS_ORIGINS: [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    // Development/Staging/Production EC2 or custom domain
+    // Domaines personnalisés et production
+    'https://main.d2xx7v3g6gelma.amplifyapp.com',
+    'https://m346-backend.kinome.one',
     process.env.FRONTEND_URL || 'http://localhost:5173',
     // Amplify hosted domains (wildcard) - must be https for deployed app
     /https:\/\/.*\.amplifyapp\.com$/

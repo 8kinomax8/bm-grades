@@ -426,7 +426,10 @@ export default function BMGradeCalculator() {
             {user && (
               <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                {database.userId ? 'Synced' : 'Local'}
+                {/* Affiche "Synced" seulement si backend joignable */}
+                {(database.userId && database.loading === false)
+                  ? 'Synced'
+                  : 'Local'}
               </div>
             )}
           </div>
