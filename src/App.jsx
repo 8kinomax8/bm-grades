@@ -682,7 +682,13 @@ export default function BMGradeCalculator() {
                       min="4"
                       max="6"
                       value={maturnoteGoal}
-                      onChange={(e) => setMaturnoteGoal(parseFloat(e.target.value))}
+                      onChange={async (e) => {
+                        const newGoal = parseFloat(e.target.value);
+                        setMaturnoteGoal(newGoal);
+                        if (database && database.updateMaturanoteGoal) {
+                          await database.updateMaturanoteGoal(newGoal);
+                        }
+                      }}
                       className="w-16 p-1 border-2 border-indigo-300 rounded text-sm font-bold text-center"
                     />
                   </div>
