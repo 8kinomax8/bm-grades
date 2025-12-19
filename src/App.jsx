@@ -424,12 +424,16 @@ export default function BMGradeCalculator() {
               BM Grade Calculator
             </h1>
             {user && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-full ${database.userId && database.loading === false ? 'bg-gray-50 text-gray-600' : 'bg-red-100 text-red-700 border border-red-300'}`}>
+                <div className={`w-2 h-2 rounded-full animate-pulse ${database.userId && database.loading === false ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 {/* Affiche "Synced" seulement si backend joignable */}
                 {(database.userId && database.loading === false)
                   ? 'Synced'
-                  : 'Local'}
+                  : (
+                    <span className="flex items-center">
+                      <span className="font-semibold">Not synced with database</span>
+                    </span>
+                  )}
               </div>
             )}
           </div>
@@ -547,7 +551,7 @@ export default function BMGradeCalculator() {
             <div>
               <PromotionStatus 
                 promotionStatus={calculations.getSimulatedPromotionStatus()}
-                title="Semester Promotion Status (BM1)"
+                title="Semester Promotion Status"
               />
               
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Semester Simulator</h2>
