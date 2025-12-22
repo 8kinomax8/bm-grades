@@ -1,17 +1,4 @@
-  // Update maturnote goal
-  const updateMaturanoteGoal = useCallback(async (goal) => {
-    if (!userId) return null;
-    setLoading(true);
-    setError(null);
-    try {
-      return await db.updateUserMaturanoteGoal(userId, goal);
-    } catch (err) {
-      setError(err.message);
-      console.error('Error updating maturnote goal:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+// ...existing code...
 import { useAuth } from 'react-oidc-context';
 import * as db from '../services/databaseService';
 import { useState, useCallback } from 'react';
@@ -324,7 +311,7 @@ export function useDatabase() {
     getUserSubjectGoals,
     setExamGrade,
     removeExamGrade,
-    getUserExamGrades
-    ,updateMaturanoteGoal
+    getUserExamGrades,
+    updateMaturanoteGoal
   };
 }
