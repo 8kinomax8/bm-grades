@@ -1,4 +1,3 @@
-// ...existing code...
 import { useAuth } from 'react-oidc-context';
 import * as db from '../services/databaseService';
 import { useState, useCallback } from 'react';
@@ -311,7 +310,6 @@ export function useDatabase() {
     getUserSubjectGoals,
     setExamGrade,
     removeExamGrade,
-    getUserExamGrades,
-    updateMaturanoteGoal
+    getUserExamGrades
   };
 }
