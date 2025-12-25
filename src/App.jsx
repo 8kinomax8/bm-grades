@@ -681,15 +681,21 @@ export default function BMGradeCalculator() {
                       onChange={async (e) => {
                         const newGoal = parseFloat(e.target.value);
                         setMaturnoteGoal(newGoal);
-                        if (user && database.userId && typeof database.updateMaturanoteGoal === 'function') {
-                          try {
+                        try {
+                          if (
+                            user &&
+                            database &&
+                            database.userId &&
+                            typeof database.updateMaturanoteGoal === 'function'
+                          ) {
                             await database.updateMaturanoteGoal(newGoal);
-                            // Optionally: show a success message or update state
-                          } catch (err) {
-                            console.error('Error updating maturnote goal to database:', err);
+                          } else {
+                            // No backend or function, just skip DB update
+                            console.log('Maturnote goal update skipped: no user, userId, or updateMaturanoteGoal function.');
                           }
-                        } else {
-                          console.log('Maturnote goal update skipped: no user or userId');
+                        } catch (err) {
+                          // Catch any error, including ReferenceError if updateMaturanoteGoal is not defined
+                          console.error('Maturnote goal update failed (but UI will not crash):', err);
                         }
                       }}
                       className="w-16 p-1 border-2 border-indigo-300 rounded text-sm font-bold text-center"
