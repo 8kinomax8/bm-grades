@@ -75,18 +75,30 @@ export const analyzeBulletin = async (file, scanType = 'Bulletin') => {
   try {
     const base64Data = await fileToBase64(file);
     
+    // Validate file type
+    const mimeType = file.type || 'image/jpeg';
+    if (!mimeType.startsWith('image/') && mimeType !== 'application/pdf') {
+      throw new Error(`Unsupported file type: ${mimeType}. Only images and PDFs are accepted.`);
+    }
+    
+    // Build data URI in correct format: data:image/type;base64,ABC123...
+    const dataUri = `data:${mimeType};base64,${base64Data}`;
+    console.log(`🔵 Sending scan request (type: ${scanType}, mimeType: ${mimeType}, size: ${base64Data.length} bytes)`);
+    
     const response = await fetch(`${API_URL}/api/scan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        image: `data:${file.type};base64,${base64Data}`,
+        image: dataUri,
         scanType
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Erreur HTTP: ${response.status}`);
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      const errorMsg = errorData.error || `HTTP ${response.status}`;
+      console.error(`❌ API error (${response.status}):`, errorMsg);
+      throw new Error(errorMsg);
     }
 
     const data = await response.json();

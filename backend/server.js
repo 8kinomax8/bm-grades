@@ -83,9 +83,22 @@ app.post("/api/scan", async (req, res) => {
       return res.status(500).json({ error: "Missing Anthropic API key" });
     }
 
+    // Extract media type and base64 data from data URI
+    // Format: data:image/png;base64,ABC123...
+    const matches = image.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches || !matches[1] || !matches[2]) {
+      console.log("❌ Invalid image format:", image.substring(0, 50));
+      return res.status(400).json({ error: "Invalid image format. Must be data:image/type;base64,..." });
+    }
+
+    const mediaType = matches[1];
+    const base64Data = matches[2];
+    
+    console.log(`📸 Image media type: ${mediaType}, size: ${base64Data.length} bytes`);
+    console.log(`📸 Analyzing image (type: ${scanType || 'Bulletin'})...`);
+
     // Select prompt based on scan type
     const prompt = scanType === 'SAL' ? SAL_PROMPT : BULLETIN_PROMPT;
-    console.log(`📸 Analyzing image (type: ${scanType || 'Bulletin'})...`);
     console.log("🔑 API Key:", process.env.ANTHROPIC_API_KEY.substring(0, 15) + "...");
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -110,8 +123,8 @@ app.post("/api/scan", async (req, res) => {
                 type: "image",
                 source: {
                   type: "base64",
-                  media_type: image.split(';')[0].split(':')[1],
-                  data: image.split(',')[1]
+                  media_type: mediaType,
+                  data: base64Data
                 }
               }
             ]
