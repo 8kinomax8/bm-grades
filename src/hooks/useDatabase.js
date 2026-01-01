@@ -55,6 +55,17 @@ export function useDatabase() {
     }
   }, [userId]);
 
+  // Update maturanote goal
+  const updateMaturanoteGoal = useCallback(async (goal) => {
+    if (!userId) return null;
+
+    try {
+      return await db.updateUserMaturanoteGoal(userId, goal);
+    } catch (err) {
+      console.error('Error updating Maturanote goal:', err);
+    }
+  }, [userId]);
+
   // ============================================
   // GRADES
   // ============================================
@@ -297,6 +308,7 @@ export function useDatabase() {
     syncUser,
     updateSemester,
     updateBmType,
+    updateMaturanoteGoal,
     addGrade,
     removeGrade,
     getUserGrades,

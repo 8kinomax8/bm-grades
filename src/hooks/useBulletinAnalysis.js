@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { analyzeBulletin, processSALScan, processBulletinScan } from '../services/apiService';
+import { formatSwissDate } from '../utils';
 
 /**
  * Hook personnalisé pour l'analyse des bulletins et screenshots SAL
@@ -26,9 +27,26 @@ export const useBulletinAnalysis = (
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
 
+  const normalizeNumber = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const cleaned = String(value).replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   const analyzeFile = async (file, scanType = 'Bulletin') => {
     setIsAnalyzing(true);
     setAnalysisResult(null);
+
+    // Guard against oversized files that trigger 413 + missing CORS headers
+    const MAX_UPLOAD_BYTES = 12 * 1024 * 1024; // 12 MB
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setAnalysisResult({
+        error: 'Fichier trop volumineux (>12 MB). Merci de compresser ou de fournir un extrait plus petit.'
+      });
+      setIsAnalyzing(false);
+      return;
+    }
 
     try {
       const result = await analyzeBulletin(file, scanType);
@@ -51,11 +69,15 @@ export const useBulletinAnalysis = (
         // Save to Supabase if callback provided
         if (onAddControl && addedControls.length > 0) {
           for (const control of addedControls) {
+            const normalizedGrade = normalizeNumber(control.grade);
+            const normalizedWeight = Math.max(1, Math.round(normalizeNumber(control.weight) || 1));
+            const normalizedDate = control.date ? formatSwissDate(control.date) : null;
+
             await onAddControl(
               control.subject,
-              control.grade,
-              1,
-              control.date,
+              normalizedGrade,
+              normalizedWeight,
+              normalizedDate,
               control.name
             );
           }
@@ -93,7 +115,7 @@ export const useBulletinAnalysis = (
     } catch (error) {
       console.error('Analysis error:', error);
       setAnalysisResult({
-        error: 'Error analyzing the image. Check the format.'
+        error: 'Error analyzing the image. Check the format or try a smaller file.'
       });
     } finally {
       setIsAnalyzing(false);

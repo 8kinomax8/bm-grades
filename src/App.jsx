@@ -190,12 +190,35 @@ export default function BMGradeCalculator() {
     maturnoteGoal
   });
 
+  const normalizeNumber = (value, fallback = null) => {
+    if (value === null || value === undefined || value === '') return fallback;
+    const cleaned = String(value).replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
   // Database persistence functions
   const addControlToDatabase = async (subject, grade, weight, date = null, name = null) => {
     console.log('💾 addControlToDatabase called', { user: !!user, userId: database.userId, subject, grade, weight });
     if (user && database.userId) {
       try {
-        const result = await database.addGrade(subject, grade, weight, currentSemester, name, date);
+        const normalizedGrade = normalizeNumber(grade);
+        const normalizedWeight = normalizeNumber(weight, 1) ?? 1;
+        const normalizedDate = date ? formatSwissDate(date) : '';
+
+        if (normalizedGrade === null) {
+          console.log('⚠️ Invalid grade, skipping DB save');
+          return;
+        }
+
+        const result = await database.addGrade(
+          subject,
+          normalizedGrade,
+          normalizedWeight,
+          currentSemester,
+          name,
+          normalizedDate
+        );
         console.log('💾 Grade saved to DB:', result);
       } catch (err) {
         console.error('Error saving grade to database:', err);
@@ -287,13 +310,26 @@ export default function BMGradeCalculator() {
 
   // ============ Management functions ============
   const addGrade = async (subject, grade, weight, date = null, name = null) => {
+    const normalizedGrade = normalizeNumber(grade);
+    const normalizedWeight = normalizeNumber(weight, 1) ?? 1;
+    const normalizedDate = date ? formatSwissDate(date) : '';
+    const normalizedName = name ? name.trim() : null;
+
+    if (normalizedGrade === null) {
+      console.log('⚠️ Invalid grade, skipping save');
+      return;
+    }
+
     // Check for duplicates: same subject, grade, date, and name
     const existingGrades = subjects[subject] || [];
-    const isDuplicate = existingGrades.some(g => 
-      Math.abs(g.grade - parseFloat(grade)) < 0.01 &&
-      g.date === date &&
-      g.name === name
-    );
+    const isDuplicate = existingGrades.some(g => {
+      const storedDate = g.date ? formatSwissDate(g.date) : '';
+      return (
+        Math.abs(g.grade - normalizedGrade) < 0.01 &&
+        storedDate === normalizedDate &&
+        (g.name || '').trim() === (normalizedName || '')
+      );
+    });
     
     if (isDuplicate) {
       console.log('⚠️ Duplicate grade detected, skipping:', { subject, grade, date, name });
@@ -302,11 +338,11 @@ export default function BMGradeCalculator() {
     
     const newGrade = {
       id: Date.now(),
-      grade: parseFloat(grade),
-      weight: parseFloat(weight),
-      displayWeight: weight.toString(),
-      date: date,
-      name: name
+      grade: normalizedGrade,
+      weight: normalizedWeight,
+      displayWeight: normalizedWeight.toString(),
+      date: normalizedDate,
+      name: normalizedName
     };
     
     setSubjects(prev => ({
@@ -315,7 +351,7 @@ export default function BMGradeCalculator() {
     }));
 
     // Save to database
-    await addControlToDatabase(subject, grade, weight, date, name);
+    await addControlToDatabase(subject, normalizedGrade, normalizedWeight, normalizedDate, normalizedName);
   };
 
   const removeGrade = async (subject, gradeId) => {

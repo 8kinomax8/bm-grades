@@ -3,6 +3,7 @@
  */
 
 import { FRONTEND_CONFIG } from '../../config.js';
+import { formatSwissDate } from '../utils';
 
 const API_URL = FRONTEND_CONFIG.API_URL;
 
@@ -116,6 +117,13 @@ export const processSALScan = (result, currentSubjects, validSubjects) => {
   const newSubjects = { ...currentSubjects };
   const addedControls = [];
 
+  const normalizeNumber = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const cleaned = String(value).replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   if (!result.controls) {
     return { updatedSubjects: newSubjects, addedControls };
   }
@@ -123,34 +131,39 @@ export const processSALScan = (result, currentSubjects, validSubjects) => {
   result.controls.forEach((control) => {
     const canon = normalizeSubjectName(control.subject, validSubjects);
     if (!canon) return;
-    
-    // Skip controls that don't have a grade yet (only weight/Gewichtung)
-    if (control.grade === null || control.grade === undefined || control.grade === '' || isNaN(parseFloat(control.grade))) {
-      return;
-    }
-    
-    // Create a unique identifier based on subject + date + grade
-    const controlId = `${canon}-${control.date}-${control.grade}`;
+
+    const normalizedGrade = normalizeNumber(control.grade);
+    if (normalizedGrade === null) return; // Skip incomplete rows
+
+    const normalizedDate = control.date ? formatSwissDate(control.date) : '';
+    const normalizedWeight = Math.max(1, Math.round(normalizeNumber(control.weight) || 1));
+    const controlId = `${canon}-${normalizedDate}-${normalizedGrade}`;
     
     // Check if this assessment already exists
     const existingGrades = newSubjects[canon] || [];
     const alreadyExists = existingGrades.some(g => 
       g.controlId === controlId || 
-      (g.date === control.date && Math.abs(g.grade - control.grade) < 0.01)
+      (formatSwissDate(g.date) === normalizedDate && Math.abs(g.grade - normalizedGrade) < 0.01)
     );
     
     if (!alreadyExists) {
       if (!newSubjects[canon]) newSubjects[canon] = [];
       newSubjects[canon] = [...newSubjects[canon], {
-        grade: parseFloat(control.grade),
-        weight: 1,
-        displayWeight: '1',
-        date: control.date,
+        grade: normalizedGrade,
+        weight: normalizedWeight,
+        displayWeight: normalizedWeight.toString(),
+        date: normalizedDate,
         name: control.name || '',
-        controlId: controlId,
+        controlId,
         id: Date.now() + Math.random()
       }];
-      addedControls.push({ subject: canon, ...control });
+      addedControls.push({
+        subject: canon,
+        grade: normalizedGrade,
+        weight: normalizedWeight,
+        date: normalizedDate,
+        name: control.name || ''
+      });
     }
   });
 
@@ -168,11 +181,20 @@ export const processSALScan = (result, currentSubjects, validSubjects) => {
 export const processBulletinScan = (result, currentSemesterGrades, validSubjects, currentSemester) => {
   const mappedGrades = {};
   const grades = result.grades || {};
+  const normalizeNumber = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    const cleaned = String(value).replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
   
   Object.entries(grades).forEach(([k, v]) => {
     const canon = normalizeSubjectName(k, validSubjects);
     if (!canon) return;
-    mappedGrades[canon] = parseFloat(v);
+    const normalizedGrade = normalizeNumber(v);
+    if (normalizedGrade !== null) {
+      mappedGrades[canon] = normalizedGrade;
+    }
   });
 
   const semester = result.semester ?? currentSemester;
