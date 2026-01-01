@@ -24,7 +24,7 @@ export default function BulletinAnalysis({
             </>
           ) : (
             <>
-              <Upload className="w-5 h-5 text-purple-600" />
+              <Camera className="w-5 h-5 text-purple-600" />
               <h3 className="text-lg font-semibold text-gray-800">
                 Scan bulletin
               </h3>
@@ -40,14 +40,14 @@ export default function BulletinAnalysis({
                 <>
                   <Camera className="w-10 h-10 text-gray-400 mb-2" />
                   <p className="text-sm text-gray-600 text-center">
-                    Photo or image (JPG, PNG)
+                    Only image (JPG, PNG)
                   </p>
                 </>
               ) : (
                 <>
-                  <Upload className="w-10 h-10 text-gray-400 mb-2" />
+                  <Camera className="w-10 h-10 text-gray-400 mb-2" />
                   <p className="text-sm text-gray-600 text-center">
-                    PDF or image
+                    Only image (JPG, PNG)
                   </p>
                 </>
               )}
@@ -55,7 +55,7 @@ export default function BulletinAnalysis({
             <input
               type="file"
               className="hidden"
-              accept={activeTab === 'current' ? 'image/*' : 'image/*,application/pdf'}
+              accept="image/*"
               onChange={(e) => onFileUpload(e, activeTab)}
               disabled={isAnalyzing}
             />

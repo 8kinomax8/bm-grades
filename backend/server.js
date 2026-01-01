@@ -101,34 +101,28 @@ app.post("/api/scan", async (req, res) => {
     const prompt = scanType === 'SAL' ? SAL_PROMPT : BULLETIN_PROMPT;
     console.log("🔑 API Key:", process.env.ANTHROPIC_API_KEY.substring(0, 15) + "...");
 
-    // Build content array with proper type (image for images, document for PDFs)
+    // Only images supported (JPG, PNG, GIF, WebP)
+    const supportedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!supportedImageTypes.includes(mediaType)) {
+      console.log(`❌ Unsupported media type: ${mediaType}`);
+      return res.status(400).json({ error: `Only images are supported (JPG, PNG, WebP). Received: ${mediaType}` });
+    }
+
+    // Build content array - images only, no PDFs
     const contentArray = [
       {
         type: "text",
         text: prompt
-      }
-    ];
-
-    // Add image or document based on media type
-    if (mediaType === 'application/pdf') {
-      contentArray.push({
-        type: "document",
-        source: {
-          type: "base64",
-          media_type: mediaType,
-          data: base64Data
-        }
-      });
-    } else {
-      contentArray.push({
+      },
+      {
         type: "image",
         source: {
           type: "base64",
           media_type: mediaType,
           data: base64Data
         }
-      });
-    }
+      }
+    ];
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

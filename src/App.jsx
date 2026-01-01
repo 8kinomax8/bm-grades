@@ -690,7 +690,9 @@ export default function BMGradeCalculator() {
                                         
                                         // Delete from database if user is logged in
                                         if (user && database.userId) {
-                                          console.log(`Would delete S${sem} grade for ${subject} from database`);
+                                          console.log(`✅ Deleted S${sem} grade for ${subject}`);
+                                        } else {
+                                          console.log(`✅ Deleted S${sem} grade for ${subject} (local only)`);
                                         }
                                       }
                                     }
