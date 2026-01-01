@@ -9,6 +9,33 @@ import SemesterPrompt from './components/SemesterPrompt';
 import { storage, formatSwissDate } from './utils';
 import { useAuth as useCognitoAuth } from 'react-oidc-context';
 
+const swissDateToSQL = (swissDate) => {
+  if (!swissDate || typeof swissDate !== 'string') return '';
+  
+  const parts = swissDate.split('.');
+  if (parts.length !== 3) return '';
+  
+  const [day, month, year] = parts;
+  
+  if (!day || !month || !year) return '';
+  if (day.length !== 2 || month.length !== 2 || year.length !== 4) return '';
+  
+  return `${year}-${month}-${day}`;
+};
+
+const sqlDateToSwiss = (sqlDate) => {
+  if (!sqlDate || typeof sqlDate !== 'string') return '';
+  
+  const parts = sqlDate.split('-');
+  if (parts.length !== 3) return '';
+  
+  const [year, month, day] = parts;
+  
+  if (!day || !month || !year) return '';
+  
+  return `${day}.${month}.${year}`;
+};
+
 const AuthBackdrop = ({ children, contentClassName = 'w-full max-w-xl' }) => (
   <div className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-br from-[#eef2ff] via-[#fdfbff] to-[#e5e4ff] overflow-x-hidden">
     <div className="pointer-events-none absolute inset-0">
@@ -100,21 +127,12 @@ export default function BMGradeCalculator() {
             const weight = parseFloat(g.weight);
             const displayWeight = Number.isInteger(weight) ? weight.toString() : weight.toFixed(2).replace(/\.?0+$/, '');
             
-            // Filter out invalid dates (e.g., 1899-11-30, 0000-00-00)
-            let formattedDate = '';
-            if (g.control_date) {
-              const dateStr = String(g.control_date);
-              if (!dateStr.startsWith('1899') && !dateStr.startsWith('0000')) {
-                formattedDate = formatSwissDate(g.control_date);
-              }
-            }
-            
             subjectsFromDb[g.subject_name].push({
               id: g.id,
               grade: parseFloat(g.grade),
               weight: weight,
               displayWeight: displayWeight,
-              date: formattedDate,
+              date: g.control_date ? sqlDateToSwiss(g.control_date) : '',
               name: g.control_name
             });
           });
@@ -221,8 +239,9 @@ export default function BMGradeCalculator() {
       try {
         const normalizedGrade = normalizeNumber(grade);
         const normalizedWeight = normalizeNumber(weight, 1) ?? 1;
-        // Date is already in DD.MM.YYYY format from addGrade, don't reformat
-        const normalizedDate = date || '';
+        
+        const sqlDate = date ? swissDateToSQL(date) : '';
+        console.log('📅 Date conversion:', { input: date, output: sqlDate });
 
         if (normalizedGrade === null) {
           console.log('⚠️ Invalid grade, skipping DB save');
@@ -235,7 +254,7 @@ export default function BMGradeCalculator() {
           normalizedWeight,
           currentSemester,
           name,
-          normalizedDate
+          sqlDate
         );
         console.log('💾 Grade saved to DB:', result);
       } catch (err) {
