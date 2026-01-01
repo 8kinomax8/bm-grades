@@ -498,11 +498,14 @@ export default function BMGradeCalculator() {
             </h1>
             {user && (
               <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                {/* Affiche "Synced" seulement si backend joignable */}
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  (database.userId && database.loading === false) 
+                    ? 'bg-green-500' 
+                    : 'bg-red-500'
+                }`}></div>
                 {(database.userId && database.loading === false)
                   ? 'Synced'
-                  : 'Local'}
+                  : 'Not synced'}
               </div>
             )}
           </div>
