@@ -216,12 +216,13 @@ export default function BMGradeCalculator() {
 
   // Database persistence functions
   const addControlToDatabase = async (subject, grade, weight, date = null, name = null) => {
-    console.log('💾 addControlToDatabase called', { user: !!user, userId: database.userId, subject, grade, weight });
+    console.log('💾 addControlToDatabase called', { user: !!user, userId: database.userId, subject, grade, weight, date });
     if (user && database.userId) {
       try {
         const normalizedGrade = normalizeNumber(grade);
         const normalizedWeight = normalizeNumber(weight, 1) ?? 1;
-        const normalizedDate = date ? formatSwissDate(date) : '';
+        // Date is already in DD.MM.YYYY format from addGrade, don't reformat
+        const normalizedDate = date || '';
 
         if (normalizedGrade === null) {
           console.log('⚠️ Invalid grade, skipping DB save');
