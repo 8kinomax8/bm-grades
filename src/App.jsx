@@ -115,7 +115,10 @@ export default function BMGradeCalculator() {
             if (!semGradesFromDb[g.subject_name]) {
               semGradesFromDb[g.subject_name] = {};
             }
-            semGradesFromDb[g.subject_name][g.semester] = parseFloat(g.grade);
+            const semesterKey = String(g.semester_number || g.semester || '');
+            if (semesterKey) {
+              semGradesFromDb[g.subject_name][semesterKey] = parseFloat(g.grade);
+            }
           });
           setSemesterGrades(semGradesFromDb);
         }

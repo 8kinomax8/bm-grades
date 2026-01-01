@@ -94,19 +94,41 @@ app.post("/api/scan", async (req, res) => {
     const mediaType = matches[1];
     const base64Data = matches[2];
     
-    // Validate media type
-    const validMediaTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-    if (!validMediaTypes.includes(mediaType)) {
-      console.log(`❌ Unsupported media type: ${mediaType}`);
-      return res.status(400).json({ error: `Unsupported file type: ${mediaType}. Supported: ${validMediaTypes.join(', ')}` });
-    }
-    
-    console.log(`📸 Image media type: ${mediaType}, size: ${base64Data.length} bytes`);
-    console.log(`📸 Analyzing image (type: ${scanType || 'Bulletin'})...`);
+    console.log(`📸 Media type: ${mediaType}, size: ${base64Data.length} bytes`);
+    console.log(`📸 Analyzing (type: ${scanType || 'Bulletin'})...`);
 
     // Select prompt based on scan type
     const prompt = scanType === 'SAL' ? SAL_PROMPT : BULLETIN_PROMPT;
     console.log("🔑 API Key:", process.env.ANTHROPIC_API_KEY.substring(0, 15) + "...");
+
+    // Build content array with proper type (image for images, document for PDFs)
+    const contentArray = [
+      {
+        type: "text",
+        text: prompt
+      }
+    ];
+
+    // Add image or document based on media type
+    if (mediaType === 'application/pdf') {
+      contentArray.push({
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: mediaType,
+          data: base64Data
+        }
+      });
+    } else {
+      contentArray.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: mediaType,
+          data: base64Data
+        }
+      });
+    }
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -121,20 +143,7 @@ app.post("/api/scan", async (req, res) => {
         messages: [
           {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: prompt
-              },
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mediaType,
-                  data: base64Data
-                }
-              }
-            ]
+            content: contentArray
           }
         ]
       })
