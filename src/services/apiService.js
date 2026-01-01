@@ -144,8 +144,12 @@ export const processSALScan = (result, currentSubjects, validSubjects) => {
     const canon = normalizeSubjectName(control.subject, validSubjects);
     if (!canon) return;
 
+    // Validate grade is present and valid
     const normalizedGrade = normalizeNumber(control.grade);
-    if (normalizedGrade === null) return; // Skip incomplete rows
+    if (normalizedGrade === null || normalizedGrade === 0) {
+      console.log(`⏭️  Skipping ${control.subject} - no grade provided`);
+      return; // Skip controls without a grade
+    }
 
     const normalizedDate = control.date ? formatSwissDate(control.date) : '';
     const normalizedWeight = Math.max(1, Math.round(normalizeNumber(control.weight) || 1));

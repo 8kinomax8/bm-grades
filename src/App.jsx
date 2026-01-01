@@ -100,7 +100,7 @@ export default function BMGradeCalculator() {
               grade: parseFloat(g.grade),
               weight: parseFloat(g.weight),
               displayWeight: g.weight.toString(),
-              date: formatSwissDate(g.control_date),
+              date: g.control_date ? formatSwissDate(g.control_date) : '',
               name: g.control_name
             });
           });
