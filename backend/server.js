@@ -84,15 +84,22 @@ app.post("/api/scan", async (req, res) => {
     }
 
     // Extract media type and base64 data from data URI
-    // Format: data:image/png;base64,ABC123...
+    // Format: data:image/png;base64,ABC123... or data:application/pdf;base64,ABC123...
     const matches = image.match(/^data:([^;]+);base64,(.+)$/);
     if (!matches || !matches[1] || !matches[2]) {
       console.log("❌ Invalid image format:", image.substring(0, 50));
-      return res.status(400).json({ error: "Invalid image format. Must be data:image/type;base64,..." });
+      return res.status(400).json({ error: "Invalid image format. Must be data:mime/type;base64,..." });
     }
 
     const mediaType = matches[1];
     const base64Data = matches[2];
+    
+    // Validate media type
+    const validMediaTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!validMediaTypes.includes(mediaType)) {
+      console.log(`❌ Unsupported media type: ${mediaType}`);
+      return res.status(400).json({ error: `Unsupported file type: ${mediaType}. Supported: ${validMediaTypes.join(', ')}` });
+    }
     
     console.log(`📸 Image media type: ${mediaType}, size: ${base64Data.length} bytes`);
     console.log(`📸 Analyzing image (type: ${scanType || 'Bulletin'})...`);
