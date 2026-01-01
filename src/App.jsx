@@ -95,12 +95,26 @@ export default function BMGradeCalculator() {
             if (!subjectsFromDb[g.subject_name]) {
               subjectsFromDb[g.subject_name] = [];
             }
+            
+            // Parse weight as number and format without unnecessary decimals
+            const weight = parseFloat(g.weight);
+            const displayWeight = Number.isInteger(weight) ? weight.toString() : weight.toFixed(2).replace(/\.?0+$/, '');
+            
+            // Filter out invalid dates (e.g., 1899-11-30, 0000-00-00)
+            let formattedDate = '';
+            if (g.control_date) {
+              const dateStr = String(g.control_date);
+              if (!dateStr.startsWith('1899') && !dateStr.startsWith('0000')) {
+                formattedDate = formatSwissDate(g.control_date);
+              }
+            }
+            
             subjectsFromDb[g.subject_name].push({
               id: g.id,
               grade: parseFloat(g.grade),
-              weight: parseFloat(g.weight),
-              displayWeight: g.weight.toString(),
-              date: g.control_date ? formatSwissDate(g.control_date) : '',
+              weight: weight,
+              displayWeight: displayWeight,
+              date: formattedDate,
               name: g.control_name
             });
           });
