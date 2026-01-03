@@ -26,10 +26,12 @@ const swissDateToSQL = (swissDate) => {
 const sqlDateToSwiss = (sqlDate) => {
   if (!sqlDate || typeof sqlDate !== 'string') return '';
   
-  const parts = sqlDate.split('-');
-  if (parts.length !== 3) return '';
+  // Extract only the date part (YYYY-MM-DD) from ISO format
+  // Handles formats like "2025-12-09T00:00:00.000Z" -> "2025-12-09"
+  const dateMatch = sqlDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!dateMatch) return '';
   
-  const [year, month, day] = parts;
+  const [, year, month, day] = dateMatch;
   
   if (!day || !month || !year) return '';
   
