@@ -20,14 +20,26 @@ app.set('trust proxy', true);
 
 // 🔒 FIXED PROMPTS
 const BULLETIN_PROMPT = `
-Analyze this Swiss Berufsmaturität school report. Extract ONLY subjects and their grades. Respond ONLY with valid JSON, no preamble, no markdown, in this exact format:
+Analyze this Swiss Berufsmaturität school report. Extract ALL semesters with their subjects and grades. Respond ONLY with valid JSON, no preamble, no markdown, in this exact format:
 {
-  "semester": semester_number,
-  "grades": {
-    "Subject_Name": numeric_grade,
-    "Other_Subject": numeric_grade
-  }
+  "semesters": [
+    {
+      "semester": 1,
+      "grades": {
+        "Subject_Name": numeric_grade,
+        "Other_Subject": numeric_grade
+      }
+    },
+    {
+      "semester": 2,
+      "grades": {
+        "Subject_Name": numeric_grade
+      }
+    }
+  ]
 }
+
+If the document shows multiple semester columns, extract ALL of them. Subjects may vary per semester.
 
 Possible subjects: Deutsch, Englisch, Französisch, Mathematik, Naturwissenschaften, Finanz- und Rechnungswesen, Wirtschaft und Recht, Geschichte und Politik, Interdisziplinäres Arbeiten in den Fächern.
 

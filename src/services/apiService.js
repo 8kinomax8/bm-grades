@@ -188,40 +188,54 @@ export const processSALScan = (result, currentSubjects, validSubjects) => {
 
 /**
  * Traite le résultat d'un scan de bulletin et retourne les notes semestrielles
+ * Supporte maintenant plusieurs semestres dans un même bulletin
  * @param {Object} result - Résultat de l'API
  * @param {Object} currentSemesterGrades - Notes semestrielles actuelles
  * @param {Set} validSubjects - Set des matières valides
- * @param {number} currentSemester - Semestre actuel
- * @returns {Object} {updatedSemesterGrades, mappedGrades, semester}
+ * @param {number} currentSemester - Semestre actuel (fallback si pas spécifié)
+ * @returns {Object} {updatedSemesterGrades, semestersList}
  */
 export const processBulletinScan = (result, currentSemesterGrades, validSubjects, currentSemester) => {
-  const mappedGrades = {};
-  const grades = result.grades || {};
   const normalizeNumber = (value) => {
     if (value === null || value === undefined || value === '') return null;
     const cleaned = String(value).replace(',', '.');
     const parsed = parseFloat(cleaned);
     return Number.isFinite(parsed) ? parsed : null;
   };
-  
-  Object.entries(grades).forEach(([k, v]) => {
-    const canon = normalizeSubjectName(k, validSubjects);
-    if (!canon) return;
-    const normalizedGrade = normalizeNumber(v);
-    if (normalizedGrade !== null) {
-      mappedGrades[canon] = normalizedGrade;
-    }
-  });
 
-  const semester = result.semester ?? currentSemester;
   const updatedSemesterGrades = { ...currentSemesterGrades };
-  
-  Object.entries(mappedGrades).forEach(([subject, grade]) => {
-    if (!updatedSemesterGrades[subject]) {
-      updatedSemesterGrades[subject] = {};
+  const semestersList = []; // List of {semester, mappedGrades}
+
+  // Support both old format (single semester) and new format (multiple semesters)
+  const semesters = result.semesters || (result.grades ? [{ semester: result.semester ?? currentSemester, grades: result.grades }] : []);
+
+  semesters.forEach(semesterData => {
+    const semester = semesterData.semester ?? currentSemester;
+    const grades = semesterData.grades || {};
+    const mappedGrades = {};
+
+    Object.entries(grades).forEach(([k, v]) => {
+      const canon = normalizeSubjectName(k, validSubjects);
+      if (!canon) return;
+      const normalizedGrade = normalizeNumber(v);
+      if (normalizedGrade !== null) {
+        mappedGrades[canon] = normalizedGrade;
+      }
+    });
+
+    // Update semester grades
+    Object.entries(mappedGrades).forEach(([subject, grade]) => {
+      if (!updatedSemesterGrades[subject]) {
+        updatedSemesterGrades[subject] = {};
+      }
+      updatedSemesterGrades[subject][semester] = grade;
+    });
+
+    // Add to list if grades found
+    if (Object.keys(mappedGrades).length > 0) {
+      semestersList.push({ semester, mappedGrades });
     }
-    updatedSemesterGrades[subject][semester] = grade;
   });
 
-  return { updatedSemesterGrades, mappedGrades, semester };
+  return { updatedSemesterGrades, semestersList };
 };

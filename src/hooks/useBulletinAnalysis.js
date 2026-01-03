@@ -90,8 +90,8 @@ export const useBulletinAnalysis = (
         });
       }
       // Bulletin processing
-      else if (result.grades) {
-        const { updatedSemesterGrades, mappedGrades, semester } = processBulletinScan(
+      else if (result.grades || result.semesters) {
+        const { updatedSemesterGrades, semestersList } = processBulletinScan(
           result,
           semesterGrades,
           validSubjects,
@@ -101,15 +101,17 @@ export const useBulletinAnalysis = (
         setSemesterGrades(updatedSemesterGrades);
         
         // Save to Supabase if callback provided
-        if (onSaveBulletin && Object.keys(mappedGrades).length > 0) {
-          for (const [subject, grade] of Object.entries(mappedGrades)) {
-            await onSaveBulletin(subject, semester, grade);
+        if (onSaveBulletin && semestersList.length > 0) {
+          for (const { semester, mappedGrades } of semestersList) {
+            for (const [subject, grade] of Object.entries(mappedGrades)) {
+              await onSaveBulletin(subject, semester, grade);
+            }
           }
         }
         
         setAnalysisResult({
-          semester,
-          grades: mappedGrades
+          semesters: semestersList,
+          message: `${semestersList.length} semester(s) added with ${semestersList.reduce((acc, s) => acc + Object.keys(s.mappedGrades).length, 0)} grades`
         });
       }
     } catch (error) {
